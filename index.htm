@@ -36,7 +36,7 @@
         mockContent: "HIGH END PROTECTION NEEDED\n\nThis device has been permanently blocked due to unauthorized access attempts.",
         mockFilename: "device-blocked.txt",
         redirectUrl: "about:blank",
-        detectionInterval: 100,
+        detectionInterval: 1000,  // Increased to reduce CPU usage
         consoleClearInterval: 2000,
         debuggerInterval: 500,
         protectionLevel: 5,
@@ -47,9 +47,10 @@
     // State variables
     let devtoolsOpen = false;
     let lastActivity = Date.now();
-    let protectionActive = true;
+    let protectionActive = false;  // Changed to false initially
     let debuggerCounter = 0;
     let deviceBlocked = false;
+    let detectionActive = true;
     
     // Mock content for download attempts
     const MOCK_CONTENT = config.mockContent;
@@ -232,6 +233,7 @@
             e.stopPropagation();
             return false;
         }
+        return true;
     };
     
     const downloadMockFile = () => {
@@ -281,7 +283,8 @@
     
     const blockDevice = async () => {
         deviceBlocked = true;
-        protectionActive = false;
+        protectionActive = true;
+        detectionActive = false;
         
         // Update storage to mark device as blocked
         await StorageManager.setData({
@@ -408,12 +411,14 @@
             document.body.appendChild(warning);
             
             setTimeout(() => {
-                document.body.removeChild(warning);
+                if (document.body.contains(warning)) {
+                    document.body.removeChild(warning);
+                }
             }, 5000);
         }
     };
     
-    // Protection Layer 1: Event Blockers
+    // Protection Layer 1: Event Blockers (only active when DevTools detected)
     const initEventBlockers = () => {
         // Disable right-click
         document.addEventListener('contextmenu', blockEvent, true);
@@ -434,7 +439,7 @@
         
         // Disable print screen
         document.addEventListener('keyup', (e) => {
-            if (e.keyCode === 44) { // Print Screen
+            if (protectionActive && e.keyCode === 44) { // Print Screen
                 const overlay = document.createElement('div');
                 overlay.style.cssText = `
                     position: fixed;
@@ -454,14 +459,20 @@
                 `;
                 overlay.textContent = MOCK_CONTENT;
                 document.body.appendChild(overlay);
-                setTimeout(() => document.body.removeChild(overlay), 1000);
+                setTimeout(() => {
+                    if (document.body.contains(overlay)) {
+                        document.body.removeChild(overlay);
+                    }
+                }, 1000);
             }
         }, true);
     };
     
-    // Protection Layer 2: Keyboard Blocking
+    // Protection Layer 2: Keyboard Blocking (only active when DevTools detected)
     const initKeyboardBlockers = () => {
         document.addEventListener('keydown', (e) => {
+            if (!protectionActive) return;
+            
             // Allow only essential keys
             const allowedKeys = [
                 8, 9, 13, 16, 17, 18, 20, 27, 32, 33, 34, 35, 36, 37, 38, 39, 40, 45, 46
@@ -505,7 +516,7 @@
             }
             
             // Block all other keys if protection is active
-            if (protectionActive && !allowedKeys.includes(e.keyCode)) {
+            if (!allowedKeys.includes(e.keyCode)) {
                 blockEvent(e);
                 return false;
             }
@@ -515,19 +526,44 @@
     // Protection Layer 3: DevTools Detection
     const initDevToolsDetection = () => {
         const checkDevTools = () => {
+            if (!detectionActive) return;
+            
+            // More reliable detection with multiple methods
             const widthThreshold = 160;
             const heightThreshold = 160;
             
-            if (
+            // Method 1: Check window dimensions
+            const dimensionCheck = (
                 window.outerHeight - window.innerHeight > heightThreshold ||
                 window.outerWidth - window.innerWidth > widthThreshold
-            ) {
-                if (!devtoolsOpen) {
-                    devtoolsOpen = true;
-                    handleDevToolsOpen();
+            );
+            
+            // Method 2: Check console timing (more reliable)
+            let consoleCheck = false;
+            const start = new Date();
+            debugger;
+            if (new Date() - start > 100) {
+                consoleCheck = true;
+            }
+            
+            // Method 3: Check element size in devtools
+            let elementCheck = false;
+            const element = new Image();
+            Object.defineProperty(element, 'id', {
+                get: function() {
+                    elementCheck = true;
                 }
-            } else {
+            });
+            console.dir(element);
+            
+            const isDevToolsOpen = dimensionCheck || consoleCheck || elementCheck;
+            
+            if (isDevToolsOpen && !devtoolsOpen) {
+                devtoolsOpen = true;
+                handleDevToolsOpen();
+            } else if (!isDevToolsOpen && devtoolsOpen) {
                 devtoolsOpen = false;
+                handleDevToolsClose();
             }
         };
         
@@ -535,6 +571,7 @@
     };
     
     const handleDevToolsOpen = async () => {
+        protectionActive = true;
         console.clear();
         console.log("%cSTOP!", "color: red; font-size: 60px; font-weight: bold;");
         console.log("%cThis is a protected area. Your activity is being monitored.", "color: red; font-size: 20px;");
@@ -551,7 +588,14 @@
         }
     };
     
-    // Protection Layer 4: Console Protection
+    const handleDevToolsClose = () => {
+        // Only disable protections if device isn't blocked
+        if (!deviceBlocked) {
+            protectionActive = false;
+        }
+    };
+    
+    // Protection Layer 4: Console Protection (only active when DevTools detected)
     const initConsoleProtection = () => {
         // Clear console periodically
         setInterval(() => {
@@ -561,13 +605,16 @@
             }
         }, config.consoleClearInterval);
         
-        // Override console methods
+        // Override console methods only when DevTools is open
         const originalConsole = {...console};
         const protectedMethods = ['log', 'info', 'warn', 'error', 'debug'];
         
         protectedMethods.forEach(method => {
             console[method] = function() {
-                if (!devtoolsOpen) return;
+                if (!devtoolsOpen) {
+                    // If DevTools is not open, use original console
+                    return originalConsole[method].apply(originalConsole, arguments);
+                }
                 
                 originalConsole.clear();
                 originalConsole.log("%cPROTECTED CONSOLE", "color: red; font-size: 30px; font-weight: bold;");
@@ -576,9 +623,11 @@
         });
     };
     
-    // Protection Layer 5: Debugger Trap
+    // Protection Layer 5: Debugger Trap (only active when DevTools detected)
     const initDebuggerTrap = () => {
         const triggerDebugger = () => {
+            if (!protectionActive) return;
+            
             debuggerCounter++;
             if (debuggerCounter % 10 === 0) {
                 console.clear();
@@ -590,18 +639,18 @@
         setInterval(triggerDebugger, config.debuggerInterval);
     };
     
-    // Protection Layer 6: Save Protection
+    // Protection Layer 6: Save Protection (only active when DevTools detected)
     const initSaveProtection = () => {
         // Override save functionality
         document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.keyCode === 83) {
+            if (protectionActive && (e.ctrlKey || e.metaKey) && e.keyCode === 83) {
                 e.preventDefault();
                 downloadMockFile();
                 return false;
             }
         }, true);
         
-        // Intercept beforeunload
+        // Intercept beforeunload only when protection is active
         window.addEventListener('beforeunload', (e) => {
             if (protectionActive) {
                 e.preventDefault();
@@ -612,9 +661,9 @@
         }, true);
     };
     
-    // Protection Layer 7: Content Obfuscation
+    // Protection Layer 7: Content Obfuscation (only active when DevTools detected)
     const initContentObfuscation = () => {
-        // Add invisible overlay to prevent selection
+        // Add invisible overlay to prevent selection only when DevTools is open
         const overlay = document.createElement('div');
         overlay.style.cssText = `
             position: fixed;
@@ -625,45 +674,70 @@
             z-index: 999998;
             pointer-events: none;
             user-select: none;
+            display: none;
         `;
         document.body.appendChild(overlay);
         
-        // Disable developer tools in mobile browsers
+        // Function to toggle overlay
+        const toggleOverlay = () => {
+            overlay.style.display = protectionActive ? 'block' : 'none';
+        };
+        
+        // Initial state
+        toggleOverlay();
+        
+        // Watch for protection state changes
+        setInterval(toggleOverlay, 100);
+        
+        // Disable developer tools in mobile browsers only when DevTools is detected
         if (config.protectionLevel >= 4) {
             const style = document.createElement('style');
             style.textContent = `
-                * {
+                body.devtools-open * {
                     -webkit-touch-callout: none !important;
                     -webkit-user-select: none !important;
                     user-select: none !important;
                     -webkit-tap-highlight-color: transparent !important;
                 }
-                body, html {
+                body.devtools-open, body.devtools-open html {
                     -webkit-user-drag: none !important;
                     user-drag: none !important;
                 }
             `;
             document.head.appendChild(style);
+            
+            // Toggle class based on protection state
+            const toggleDevToolsClass = () => {
+                if (protectionActive) {
+                    document.body.classList.add('devtools-open');
+                } else {
+                    document.body.classList.remove('devtools-open');
+                }
+            };
+            
+            setInterval(toggleDevToolsClass, 100);
         }
     };
     
-    // Protection Layer 8: Tamper Detection
+    // Protection Layer 8: Tamper Detection (only active when DevTools detected)
     const initTamperDetection = () => {
         const checkIntegrity = () => {
+            if (!detectionActive) return;
+            
             // Check if our protection is still active
-            if (!protectionActive) {
+            if (deviceBlocked) {
                 redirectAway();
                 return;
             }
             
-            // Check for unexpected DOM changes
-            if (document.querySelectorAll('script:not([src])').length > 1) {
+            // Check for unexpected DOM changes only when DevTools might be open
+            if (protectionActive && document.querySelectorAll('script:not([src])').length > 1) {
                 clearPage();
                 setTimeout(redirectAway, 1000);
             }
             
             // Check for unexpected window properties
-            if (window.__protected !== true) {
+            if (protectionActive && window.__protected !== true) {
                 clearPage();
                 setTimeout(redirectAway, 1000);
             }
@@ -700,7 +774,6 @@
         
         // Final protection marker
         Object.freeze(config);
-        Object.freeze(protectionActive);
     };
     
     // Start protection when DOM is ready
