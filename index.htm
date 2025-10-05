@@ -3330,9 +3330,9 @@
 
     <!-- Control Panel -->
     <div class="control-panel" id="control-panel">
-        <h5><i class="fas fa-gamepad me-2" aria-hidden="true"></i>Pro Controls</h5>
+        <h5><i class="fas fa-gamepad me-2" aria-hidden="true"></i>Automation</h5>
         <button class="control-btn" onclick="app.startProDemo()">
-            <i class="fas fa-play me-1" aria-hidden="true"></i>Start Demo
+            <i class="fas fa-play me-1" aria-hidden="true"></i>Start Automation
         </button><!--
         <button class="control-btn" onclick="app.toggleProMode()">
             <i class="fas fa-bolt me-1" aria-hidden="true"></i>Pro Mode
@@ -7437,7 +7437,7 @@ if (document.readyState === 'loading') {
                 document.getElementById('demo-mode').style.display = 'block';
                 document.getElementById('control-panel').classList.add('show');
                 
-                showToast('🚀 Starting Pro Demo Mode...', 'success');
+                showToast('🚀 Starting Automation', 'success');
                 
                 // Start automatic data updates
                 state.demoInterval = setInterval(() => {
@@ -7484,11 +7484,11 @@ if (document.readyState === 'loading') {
                 config.PRO_MODE = !config.PRO_MODE;
                 if (config.PRO_MODE) {
                     document.body.classList.add('pro-mode');
-                    showToast('⚡ Pro Mode Activated!', 'success');
+                    showToast('Automation started', 'success');
                     activateParticleEffects();
                 } else {
                     document.body.classList.remove('pro-mode');
-                    showToast('Pro Mode Deactivated', 'info');
+                    showToast('Automation ended', 'info');
                 }
             }
             
