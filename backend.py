@@ -611,4 +611,489 @@ class AnalyticsService:
     
     def _generate_risk_summary(self) -> Dict[str, Any]:
         """Generate extinction risk summary"""
-        risk_counts = self.db.query(
+        risk_counts = self.db.query(ExtinctionRisk.risk_level, 
+                                   self.db.func.count(ExtinctionRisk.id)).group_by(ExtinctionRisk.risk_level).all()
+        
+        return {
+            'low_risk_species': next((count for level, count in risk_counts if level == 'low'), 0),
+            'medium_risk_species': next((count for level, count in risk_counts if level == 'medium'), 0),
+            'high_risk_species': next((count for level, count in risk_counts if level == 'high'), 0),
+            'critical_risk_species': next((count for level, count in risk_counts if level == 'critical'), 0)
+        }
+
+# Background Tasks
+class BackgroundTasks:
+    def __init__(self, db: Session):
+        self.db = db
+        self.data_integrator = DataIntegrator()
+        self.ai_service = AIAnalysisService()
+        
+    async def sync_external_data(self):
+        """Sync data from external sources"""
+        logger.info("Starting external data sync...")
+        
+        try:
+            # Sync NASA satellite data
+            bbox = [-180, -90, 180, 90]  # Global bounding box
+            start_date = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d')
+            end_date = datetime.utcnow().strftime('%Y-%m-%d')
+            
+            nasa_data = self.data_integrator.fetch_nasa_satellite_data(bbox, start_date, end_date)
+            logger.info(f"Fetched {len(nasa_data)} NASA satellite records")
+            
+            # Sync GBIF data for key species
+            key_species = ['Rosa spp.', 'Quercus spp.', 'Acer spp.']
+            for species in key_species:
+                gbif_data = self.data_integrator.fetch_gbif_data(species, bbox)
+                logger.info(f"Fetched {len(gbif_data)} GBIF records for {species}")
+            
+            # Cache results in Redis
+            redis_client.setex('last_sync', 3600, datetime.utcnow().isoformat())
+            
+        except Exception as e:
+            logger.error(f"Error in external data sync: {e}")
+    
+    async def generate_predictions(self):
+        """Generate predictions for all species"""
+        logger.info("Starting prediction generation...")
+        
+        try:
+            predictor = PhenologyPredictor()
+            predictor.load_models()
+            
+            species_list = self.db.query(Species).all()
+            
+            for species in species_list:
+                # Get recent observations for this species
+                recent_obs = self.db.query(Observation).filter(
+                    Observation.species_id == species.id,
+                    Observation.observation_date >= datetime.utcnow() - timedelta(days=365)
+                ).all()
+                
+                if recent_obs:
+                    # Generate predictions
+                    for obs in recent_obs[-10:]:  # Use last 10 observations
+                        features = {
+                            'temperature': obs.temperature or 20.0,
+                            'precipitation': obs.precipitation or 50.0,
+                            'humidity': 60.0,  # Default value
+                            'wind_speed': 5.0,  # Default value
+                            'solar_radiation': 200.0,  # Default value
+                            'elevation': obs.elevation or 100.0,
+                            'day_of_year': obs.observation_date.timetuple().tm_yday,
+                            'latitude': obs.latitude,
+                            'longitude': obs.longitude,
+                            'observation_date': obs.observation_date
+                        }
+                        
+                        predictions = predictor.predict_flowering(features)
+                        
+                        # Store prediction
+                        prediction = Prediction(
+                            species_id=species.id,
+                            latitude=obs.latitude,
+                            longitude=obs.longitude,
+                            predicted_date=obs.observation_date + timedelta(days=int(predictions['ensemble'])),
+                            confidence=0.85,  # Placeholder
+                            prediction_type='short_term',
+                            model_version='1.0',
+                            input_data=features
+                        )
+                        
+                        self.db.add(prediction)
+            
+            self.db.commit()
+            logger.info("Predictions generated successfully")
+            
+        except Exception as e:
+            logger.error(f"Error in prediction generation: {e}")
+            self.db.rollback()
+    
+    async def analyze_extinction_risks(self):
+        """Analyze extinction risks for all species"""
+        logger.info("Starting extinction risk analysis...")
+        
+        try:
+            species_list = self.db.query(Species).all()
+            
+            for species in species_list:
+                # Get climate projections for species range
+                climate_projections = {
+                    'temp_increase': 2.5,  # Placeholder
+                    'precip_change': -10,  # Placeholder
+                    'extreme_events': 'high'  # Placeholder
+                }
+                
+                species_data = {
+                    'scientific_name': species.scientific_name,
+                    'thermal_threshold': species.thermal_threshold,
+                    'native_range': species.native_range,
+                    'conservation_status': species.conservation_status
+                }
+                
+                risk_analysis = self.ai_service.predict_extinction_risk(species_data, climate_projections)
+                
+                # Store risk analysis
+                for risk_type, risk_data in risk_analysis.items():
+                    if isinstance(risk_data, dict):
+                        extinction_risk = ExtinctionRisk(
+                            species_id=species.id,
+                            risk_level=risk_data.get('level', 'medium'),
+                            risk_type=risk_type,
+                            probability=risk_data.get('probability', 0.5),
+                            timeframe='medium_term',
+                            model_version='1.0'
+                        )
+                        self.db.add(extinction_risk)
+            
+            self.db.commit()
+            logger.info("Extinction risk analysis completed")
+            
+        except Exception as e:
+            logger.error(f"Error in extinction risk analysis: {e}")
+            self.db.rollback()
+
+# FastAPI Application
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Starting BloomWatch Pro Backend...")
+    Base.metadata.create_all(bind=engine)
+    
+    # Initialize ML models
+    predictor = PhenologyPredictor()
+    if os.path.exists('models/random_forest.pkl'):
+        predictor.load_models()
+    else:
+        logger.warning("No pre-trained models found. Training required.")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down BloomWatch Pro Backend...")
+
+app = FastAPI(
+    title="BloomWatch Pro API",
+    description="Advanced Global Phenology Platform Backend",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Security
+security = HTTPBearer()
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# API Endpoints
+@app.get("/")
+async def root():
+    return {"message": "BloomWatch Pro API - Advanced Global Phenology Platform"}
+
+@app.post("/species", response_model=dict)
+async def create_species(species: SpeciesCreate, db: Session = Depends(get_db)):
+    """Create a new species record"""
+    try:
+        db_species = Species(**species.dict())
+        db.add(db_species)
+        db.commit()
+        db.refresh(db_species)
+        
+        return {"id": str(db_species.id), "message": "Species created successfully"}
+    except Exception as e:
+        logger.error(f"Error creating species: {e}")
+        raise HTTPException(status_code=400, detail="Species creation failed")
+
+@app.get("/species", response_model=List[dict])
+async def get_species(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """Get all species with pagination"""
+    try:
+        species = db.query(Species).offset(skip).limit(limit).all()
+        return [
+            {
+                "id": str(s.id),
+                "scientific_name": s.scientific_name,
+                "common_name": s.common_name,
+                "family": s.family,
+                "genus": s.genus,
+                "native_range": s.native_range,
+                "conservation_status": s.conservation_status,
+                "thermal_threshold": s.thermal_threshold
+            }
+            for s in species
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching species: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch species")
+
+@app.post("/observations", response_model=dict)
+async def create_observation(observation: ObservationCreate, db: Session = Depends(get_db)):
+    """Create a new observation record"""
+    try:
+        db_observation = Observation(**observation.dict())
+        db.add(db_observation)
+        db.commit()
+        db.refresh(db_observation)
+        
+        return {"id": str(db_observation.id), "message": "Observation created successfully"}
+    except Exception as e:
+        logger.error(f"Error creating observation: {e}")
+        raise HTTPException(status_code=400, detail="Observation creation failed")
+
+@app.get("/observations", response_model=List[dict])
+async def get_observations(
+    species_id: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    """Get observations with filtering"""
+    try:
+        query = db.query(Observation)
+        
+        if species_id:
+            query = query.filter(Observation.species_id == species_id)
+        if start_date:
+            query = query.filter(Observation.observation_date >= start_date)
+        if end_date:
+            query = query.filter(Observation.observation_date <= end_date)
+        
+        observations = query.offset(skip).limit(limit).all()
+        
+        return [
+            {
+                "id": str(o.id),
+                "species_id": str(o.species_id),
+                "latitude": o.latitude,
+                "longitude": o.longitude,
+                "phenophase": o.phenophase,
+                "observation_date": o.observation_date.isoformat(),
+                "source": o.source,
+                "observer_id": o.observer_id,
+                "confidence_score": o.confidence_score,
+                "temperature": o.temperature,
+                "precipitation": o.precipitation,
+                "elevation": o.elevation
+            }
+            for o in observations
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching observations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch observations")
+
+@app.post("/predictions", response_model=dict)
+async def create_prediction(request: PredictionRequest, db: Session = Depends(get_db)):
+    """Generate flowering time prediction"""
+    try:
+        predictor = PhenologyPredictor()
+        predictor.load_models()
+        
+        # Get species data
+        species = db.query(Species).filter(Species.id == request.species_id).first()
+        if not species:
+            raise HTTPException(status_code=404, detail="Species not found")
+        
+        # Get climate data for location
+        climate_data = db.query(ClimateData).filter(
+            ClimateData.latitude == request.latitude,
+            ClimateData.longitude == request.longitude,
+            ClimateData.date >= datetime.utcnow() - timedelta(days=30)
+        ).first()
+        
+        # Prepare features for prediction
+        features = {
+            'temperature': climate_data.temperature if climate_data else 20.0,
+            'precipitation': climate_data.precipitation if climate_data else 50.0,
+            'humidity': climate_data.humidity if climate_data else 60.0,
+            'wind_speed': climate_data.wind_speed if climate_data else 5.0,
+            'solar_radiation': climate_data.solar_radiation if climate_data else 200.0,
+            'elevation': 100.0,  # Default elevation
+            'day_of_year': datetime.utcnow().timetuple().tm_yday,
+            'latitude': request.latitude,
+            'longitude': request.longitude,
+            'observation_date': datetime.utcnow()
+        }
+        
+        # Generate prediction
+        predictions = predictor.predict_flowering(features)
+        
+        # Store prediction
+        prediction = Prediction(
+            species_id=request.species_id,
+            latitude=request.latitude,
+            longitude=request.longitude,
+            predicted_date=datetime.utcnow() + timedelta(days=int(predictions['ensemble'])),
+            confidence=0.85,
+            prediction_type=request.prediction_type,
+            model_version='1.0',
+            input_data=features
+        )
+        
+        db.add(prediction)
+        db.commit()
+        db.refresh(prediction)
+        
+        return {
+            "id": str(prediction.id),
+            "predicted_date": prediction.predicted_date.isoformat(),
+            "confidence": prediction.confidence,
+            "model_predictions": predictions,
+            "message": "Prediction generated successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error generating prediction: {e}")
+        raise HTTPException(status_code=500, detail="Prediction generation failed")
+
+@app.post("/extinction-risk", response_model=dict)
+async def calculate_extinction_risk(request: ExtinctionRiskRequest, db: Session = Depends(get_db)):
+    """Calculate extinction risk for a species"""
+    try:
+        ai_service = AIAnalysisService()
+        
+        # Get species data
+        species = db.query(Species).filter(Species.id == request.species_id).first()
+        if not species:
+            raise HTTPException(status_code=404, detail="Species not found")
+        
+        # Get climate projections
+        climate_projections = {
+            'temp_increase': 2.5,  # Based on IPCC scenarios
+            'precip_change': -10,
+            'extreme_events': 'high'
+        }
+        
+        species_data = {
+            'scientific_name': species.scientific_name,
+            'thermal_threshold': species.thermal_threshold,
+            'native_range': species.native_range,
+            'conservation_status': species.conservation_status
+        }
+        
+        # Calculate risk
+        risk_analysis = ai_service.predict_extinction_risk(species_data, climate_projections)
+        
+        # Store risk analysis
+        extinction_risk = ExtinctionRisk(
+            species_id=request.species_id,
+            risk_level=risk_analysis.get('overall_risk', 'medium'),
+            risk_type=request.risk_type,
+            probability=risk_analysis.get('probability', 0.5),
+            timeframe=request.timeframe,
+            model_version='1.0'
+        )
+        
+        db.add(extinction_risk)
+        db.commit()
+        db.refresh(extinction_risk)
+        
+        return {
+            "id": str(extinction_risk.id),
+            "risk_level": extinction_risk.risk_level,
+            "probability": extinction_risk.probability,
+            "analysis": risk_analysis,
+            "message": "Extinction risk calculated successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error calculating extinction risk: {e}")
+        raise HTTPException(status_code=500, detail="Extinction risk calculation failed")
+
+@app.get("/analytics", response_model=AnalyticsResponse)
+async def get_analytics(db: Session = Depends(get_db)):
+    """Get comprehensive analytics dashboard"""
+    try:
+        analytics_service = AnalyticsService(db)
+        return analytics_service.generate_global_analytics()
+    except Exception as e:
+        logger.error(f"Error generating analytics: {e}")
+        raise HTTPException(status_code=500, detail="Analytics generation failed")
+
+@app.post("/sync-data")
+async def sync_data(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Trigger external data synchronization"""
+    try:
+        task_manager = BackgroundTasks(db)
+        background_tasks.add_task(task_manager.sync_external_data)
+        return {"message": "Data synchronization started"}
+    except Exception as e:
+        logger.error(f"Error starting data sync: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start data sync")
+
+@app.post("/generate-predictions")
+async def generate_predictions(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Trigger prediction generation"""
+    try:
+        task_manager = BackgroundTasks(db)
+        background_tasks.add_task(task_manager.generate_predictions)
+        return {"message": "Prediction generation started"}
+    except Exception as e:
+        logger.error(f"Error starting prediction generation: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start prediction generation")
+
+@app.post("/analyze-risks")
+async def analyze_risks(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Trigger extinction risk analysis"""
+    try:
+        task_manager = BackgroundTasks(db)
+        background_tasks.add_task(task_manager.analyze_extinction_risks)
+        return {"message": "Extinction risk analysis started"}
+    except Exception as e:
+        logger.error(f"Error starting risk analysis: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start risk analysis")
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    try:
+        # Check database connection
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        
+        # Check Redis connection
+        redis_client.ping()
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "database": "connected",
+            "redis": "connected"
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e)
+        }
+
+# Main execution
+if __name__ == "__main__":
+    import uvicorn
+    
+    # Create tables if they don't exist
+    Base.metadata.create_all(bind=engine)
+    
+    # Run the application
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )
