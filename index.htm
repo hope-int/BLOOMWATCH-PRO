@@ -7450,7 +7450,7 @@ if (document.readyState === 'loading') {
                 });
                 
                 // Auto-scroll through sections
-                const sections = ['earth-section', 'data', 'map-section', 'data-sources', 'visualizations', 'predictions', 'contribute'];
+                const sections = ['earth-section', 'data', 'map-section', 'data-sources', 'visualizations', 'predictions', 'contribute', 'home'];
                 let currentIndex = 0;
                 
                 const scrollInterval = setInterval(() => {
@@ -7461,7 +7461,7 @@ if (document.readyState === 'loading') {
                         clearInterval(scrollInterval);
                         endProDemo();
                     }
-                }, 5000);
+                }, 1000);
             }
             
             function endProDemo() {
