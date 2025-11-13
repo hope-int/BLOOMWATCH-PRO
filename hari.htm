@@ -4883,19 +4883,6 @@ function init3DSpeciesChart() {
     try {
         document.getElementById('species3d-loading').style.display = 'none';
         
-        // Detect device capabilities for optimization
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const isLowEndDevice = isMobile || navigator.hardwareConcurrency < 4;
-        
-        // Adjust quality based on device
-        const qualitySettings = {
-            cellSegments: isLowEndDevice ? 32 : 64,
-            organelleSegments: isLowEndDevice ? 16 : 32,
-            particleCount: isLowEndDevice ? 500 : 1500,
-            dnaSegments: isLowEndDevice ? 100 : 200,
-            shadowMapSize: isLowEndDevice ? 512 : 1024
-        };
-        
         // Enhanced scene setup for microscopic view
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a1f0b);
@@ -4905,15 +4892,14 @@ function init3DSpeciesChart() {
         camera.position.set(0, 0, 60);
         
         const renderer = new THREE.WebGLRenderer({ 
-            antialias: !isLowEndDevice, 
+            antialias: true, 
             alpha: true,
-            powerPreference: isLowEndDevice ? "default" : "high-performance"
+            powerPreference: "high-performance"
         });
         renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(isLowEndDevice ? 1 : window.devicePixelRatio);
-        renderer.shadowMap.enabled = !isLowEndDevice;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.shadowMap.setSize(qualitySettings.shadowMapSize, qualitySettings.shadowMapSize);
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.0;
         container.appendChild(renderer.domElement);
@@ -4985,26 +4971,8 @@ function init3DSpeciesChart() {
             transition: all 0.3s ease;
         `;
         
-        // Fullscreen button
-        const fullscreenBtn = document.createElement('button');
-        fullscreenBtn.className = 'fullscreen-btn';
-        fullscreenBtn.innerHTML = '⛶';
-        fullscreenBtn.style.cssText = `
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: rgba(114, 137, 218, 0.8);
-            border: none;
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-        `;
-        
         // Add hover effects
-        [zoomInBtn, zoomOutBtn, resetBtn, fullscreenBtn].forEach(btn => {
+        [zoomInBtn, zoomOutBtn, resetBtn].forEach(btn => {
             btn.addEventListener('mouseenter', () => {
                 btn.style.transform = 'scale(1.1)';
                 btn.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.4)';
@@ -5018,18 +4986,15 @@ function init3DSpeciesChart() {
         mobileControls.appendChild(zoomInBtn);
         mobileControls.appendChild(zoomOutBtn);
         mobileControls.appendChild(resetBtn);
-        mobileControls.appendChild(fullscreenBtn);
         container.appendChild(mobileControls);
         
-        // Microscope lighting setup - optimized for device
+        // Microscope lighting setup
         const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
         scene.add(ambientLight);
         
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
         directionalLight.position.set(5, 10, 7);
-        if (!isLowEndDevice) {
-            directionalLight.castShadow = true;
-        }
+        directionalLight.castShadow = true;
         scene.add(directionalLight);
         
         // Simulate microscope illumination
@@ -5039,29 +5004,12 @@ function init3DSpeciesChart() {
         spotLight.penumbra = 0.3;
         spotLight.decay = 2;
         spotLight.distance = 50;
-        if (!isLowEndDevice) {
-            spotLight.castShadow = true;
-        }
+        spotLight.castShadow = true;
         scene.add(spotLight);
         
-        // Create advanced plant cell environment
-        // Cell wall (rigid outer layer in plant cells)
-        const cellWallGeometry = new THREE.SphereGeometry(42, qualitySettings.cellSegments, qualitySettings.cellSegments);
-        const cellWallMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0x8B4513,
-            metalness: 0.1,
-            roughness: 0.9,
-            transparent: true,
-            opacity: 0.3,
-            side: THREE.DoubleSide,
-            clearcoat: 0.1,
-            clearcoatRoughness: 0.5
-        });
-        const cellWall = new THREE.Mesh(cellWallGeometry, cellWallMaterial);
-        scene.add(cellWall);
-        
-        // Cell membrane with lipid bilayer - more detailed
-        const membraneGeometry = new THREE.SphereGeometry(40, qualitySettings.cellSegments, qualitySettings.cellSegments);
+        // Create realistic plant cell environment - larger cell
+        // Cell membrane with lipid bilayer
+        const membraneGeometry = new THREE.SphereGeometry(40, 64, 64);
         const membraneMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x2d5016,
             metalness: 0.1,
@@ -5075,58 +5023,8 @@ function init3DSpeciesChart() {
         const cellMembrane = new THREE.Mesh(membraneGeometry, membraneMaterial);
         scene.add(cellMembrane);
         
-        // Add phospholipid bilayer visualization - reduced for mobile
-        const phospholipidCount = isLowEndDevice ? 50 : 200;
-        const phospholipidGroup = new THREE.Group();
-        for (let i = 0; i < phospholipidCount; i++) {
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI;
-            const radius = 40;
-            
-            const x = radius * Math.sin(phi) * Math.cos(theta);
-            const y = radius * Math.sin(phi) * Math.sin(theta);
-            const z = radius * Math.cos(phi);
-            
-            // Phospholipid head
-            const headGeometry = new THREE.SphereGeometry(0.3, 8, 8);
-            const headMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x4169E1,
-                metalness: 0.2,
-                roughness: 0.3,
-                transparent: true,
-                opacity: 0.7
-            });
-            const head = new THREE.Mesh(headGeometry, headMaterial);
-            head.position.set(x, y, z);
-            
-            // Phospholipid tails (2 tails)
-            for (let j = 0; j < 2; j++) {
-                const tailAngle = (j / 2) * Math.PI + Math.random() * 0.5;
-                const tailGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 4);
-                const tailMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0xF0F8FF,
-                    metalness: 0.1,
-                    roughness: 0.4,
-                    transparent: true,
-                    opacity: 0.6
-                });
-                const tail = new THREE.Mesh(tailGeometry, tailMaterial);
-                tail.position.set(x, y, z);
-                tail.lookAt(
-                    x + Math.cos(tailAngle) * 1.5,
-                    y + Math.sin(tailAngle) * 1.5,
-                    z
-                );
-                tail.rotateX(Math.PI / 2);
-                phospholipidGroup.add(tail);
-            }
-            
-            phospholipidGroup.add(head);
-        }
-        scene.add(phospholipidGroup);
-        
-        // Cytoplasm with granular texture and organelles
-        const cytoplasmGeometry = new THREE.SphereGeometry(38, qualitySettings.cellSegments, qualitySettings.cellSegments);
+        // Cytoplasm with granular texture
+        const cytoplasmGeometry = new THREE.SphereGeometry(38, 64, 64);
         const cytoplasmMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x4a7c59,
             metalness: 0.0,
@@ -5138,55 +5036,8 @@ function init3DSpeciesChart() {
         const cytoplasm = new THREE.Mesh(cytoplasmGeometry, cytoplasmMaterial);
         scene.add(cytoplasm);
         
-        // Add cytosol particles
-        const cytosolGeometry = new THREE.BufferGeometry();
-        const cytosolCount = isLowEndDevice ? 200 : 800;
-        const cytosolPositions = new Float32Array(cytosolCount * 3);
-        
-        for (let i = 0; i < cytosolCount; i++) {
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI;
-            const radius = 5 + Math.random() * 33;
-            
-            cytosolPositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-            cytosolPositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-            cytosolPositions[i * 3 + 2] = radius * Math.cos(phi);
-        }
-        
-        cytosolGeometry.setAttribute('position', new THREE.BufferAttribute(cytosolPositions, 3));
-        const cytosolMaterial = new THREE.PointsMaterial({
-            color: 0x90EE90,
-            size: isLowEndDevice ? 0.1 : 0.15,
-            transparent: true,
-            opacity: 0.6,
-            blending: THREE.AdditiveBlending
-        });
-        
-        const cytosolParticles = new THREE.Points(cytosolGeometry, cytosolMaterial);
-        scene.add(cytosolParticles);
-        
-        // Advanced nucleus with nuclear envelope and detailed structure
-        const nucleusGroup = new THREE.Group();
-        
-        // Nucleus with irregular shape (more realistic)
-        const nucleusGeometry = new THREE.SphereGeometry(12, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
-        // Add some irregularity to the nucleus shape
-        const nucleusPositions = nucleusGeometry.attributes.position.array;
-        for (let i = 0; i < nucleusPositions.length; i += 3) {
-            const x = nucleusPositions[i];
-            const y = nucleusPositions[i + 1];
-            const z = nucleusPositions[i + 2];
-            
-            const distance = Math.sqrt(x * x + y * y + z * z);
-            const irregularity = 0.9 + Math.random() * 0.2;
-            
-            nucleusPositions[i] = x * irregularity;
-            nucleusPositions[i + 1] = y * irregularity;
-            nucleusPositions[i + 2] = z * irregularity;
-        }
-        nucleusGeometry.attributes.position.needsUpdate = true;
-        nucleusGeometry.computeVertexNormals();
-        
+        // Nucleus with nuclear envelope - larger
+        const nucleusGeometry = new THREE.SphereGeometry(12, 32, 32);
         const nucleusMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x6b5b95,
             metalness: 0.1,
@@ -5199,10 +5050,10 @@ function init3DSpeciesChart() {
         });
         const nucleus = new THREE.Mesh(nucleusGeometry, nucleusMaterial);
         nucleus.position.set(0, 0, 0);
-        nucleusGroup.add(nucleus);
+        scene.add(nucleus);
         
-        // Nuclear envelope with double membrane and detailed pores
-        const envelopeGeometry = new THREE.SphereGeometry(12.2, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
+        // Nuclear envelope with pores
+        const envelopeGeometry = new THREE.SphereGeometry(12.2, 32, 32);
         const envelopeMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x8b7ab8,
             metalness: 0.2,
@@ -5213,115 +5064,37 @@ function init3DSpeciesChart() {
         });
         const nuclearEnvelope = new THREE.Mesh(envelopeGeometry, envelopeMaterial);
         nuclearEnvelope.position.copy(nucleus.position);
-        nucleusGroup.add(nuclearEnvelope);
+        scene.add(nuclearEnvelope);
         
-        // Inner nuclear membrane
-        const innerEnvelopeGeometry = new THREE.SphereGeometry(11.8, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
-        const innerEnvelopeMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0x9d8cbf,
-            metalness: 0.2,
-            roughness: 0.4,
-            transparent: true,
-            opacity: 0.4,
-            side: THREE.DoubleSide
-        });
-        const innerNuclearEnvelope = new THREE.Mesh(innerEnvelopeGeometry, innerEnvelopeMaterial);
-        innerNuclearEnvelope.position.copy(nucleus.position);
-        nucleusGroup.add(innerNuclearEnvelope);
-        
-        // Nuclear pore complex - more detailed
-        const poreCount = isLowEndDevice ? 20 : 80;
+        // Nuclear pores - more for larger nucleus
         const poreGroup = new THREE.Group();
-        for (let i = 0; i < poreCount; i++) {
+        for (let i = 0; i < 80; i++) {
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI;
-            const radius = 12.0;
+            const radius = 12.2;
             
             const x = radius * Math.sin(phi) * Math.cos(theta);
             const y = radius * Math.sin(phi) * Math.sin(theta);
             const z = radius * Math.cos(phi);
             
-            // Nuclear pore complex structure
-            const poreComplexGroup = new THREE.Group();
-            
-            // Outer ring
-            const outerRingGeometry = new THREE.TorusGeometry(0.6, 0.1, 8, 16);
-            const outerRingMaterial = new THREE.MeshPhysicalMaterial({
+            const poreGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.6, 8);
+            const poreMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0x9d8cbf,
                 metalness: 0.3,
                 roughness: 0.2,
                 transparent: true,
                 opacity: 0.8
             });
-            const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial);
-            poreComplexGroup.add(outerRing);
-            
-            // Inner ring
-            const innerRingGeometry = new THREE.TorusGeometry(0.4, 0.08, 8, 16);
-            const innerRingMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x8b7ab8,
-                metalness: 0.3,
-                roughness: 0.2,
-                transparent: true,
-                opacity: 0.8
-            });
-            const innerRing = new THREE.Mesh(innerRingGeometry, innerRingMaterial);
-            innerRing.position.z = 0.2;
-            poreComplexGroup.add(innerRing);
-            
-            // Central transporter
-            const transporterGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16);
-            const transporterMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x7a6b9d,
-                metalness: 0.3,
-                roughness: 0.2,
-                transparent: true,
-                opacity: 0.7
-            });
-            const transporter = new THREE.Mesh(transporterGeometry, transporterMaterial);
-            transporter.rotation.x = Math.PI / 2;
-            poreComplexGroup.add(transporter);
-            
-            // Filaments extending into nucleus and cytoplasm
-            const filamentCount = isLowEndDevice ? 4 : 8;
-            for (let j = 0; j < filamentCount; j++) {
-                const angle = (j / filamentCount) * Math.PI * 2;
-                const filamentGeometry = new THREE.CylinderGeometry(0.02, 0.02, 1.0, 4);
-                const filamentMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0x9d8cbf,
-                    metalness: 0.2,
-                    roughness: 0.3,
-                    transparent: true,
-                    opacity: 0.6
-                });
-                const filament = new THREE.Mesh(filamentGeometry, filamentMaterial);
-                filament.position.x = Math.cos(angle) * 0.6;
-                filament.position.y = Math.sin(angle) * 0.6;
-                filament.rotation.z = angle;
-                filament.rotation.x = Math.PI / 2;
-                poreComplexGroup.add(filament);
-                
-                // Nuclear side filament
-                const nuclearFilament = new THREE.Mesh(filamentGeometry, filamentMaterial);
-                nuclearFilament.position.x = Math.cos(angle) * 0.6;
-                nuclearFilament.position.y = Math.sin(angle) * 0.6;
-                nuclearFilament.position.z = -0.5;
-                nuclearFilament.rotation.z = angle;
-                nuclearFilament.rotation.x = Math.PI / 2;
-                poreComplexGroup.add(nuclearFilament);
-            }
-            
-            poreComplexGroup.position.set(x, y, z);
-            poreComplexGroup.lookAt(0, 0, 0);
-            poreGroup.add(poreComplexGroup);
+            const pore = new THREE.Mesh(poreGeometry, poreMaterial);
+            pore.position.set(x, y, z);
+            pore.lookAt(0, 0, 0);
+            pore.rotateX(Math.PI / 2);
+            poreGroup.add(pore);
         }
-        nucleusGroup.add(poreGroup);
+        scene.add(poreGroup);
         
-        // Nucleolus with detailed structure
-        const nucleolusGroup = new THREE.Group();
-        
-        // Main nucleolus body
-        const nucleolusGeometry = new THREE.SphereGeometry(4, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
+        // Nucleolus - larger
+        const nucleolusGeometry = new THREE.SphereGeometry(4, 32, 32);
         const nucleolusMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x8b7ab8,
             metalness: 0.2,
@@ -5331,100 +5104,13 @@ function init3DSpeciesChart() {
         });
         const nucleolus = new THREE.Mesh(nucleolusGeometry, nucleolusMaterial);
         nucleolus.position.set(0, 0, 0);
-        nucleolusGroup.add(nucleolus);
+        nucleus.add(nucleolus);
         
-        // Fibrillar centers
-        const centerCount = isLowEndDevice ? 2 : 5;
-        for (let i = 0; i < centerCount; i++) {
-            const centerGeometry = new THREE.SphereGeometry(1.2, 8, 8);
-            const centerMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x9d8cbf,
-                metalness: 0.2,
-                roughness: 0.3,
-                emissive: 0x9d8cbf,
-                emissiveIntensity: 0.3
-            });
-            const center = new THREE.Mesh(centerGeometry, centerMaterial);
-            
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI;
-            const radius = 1.5 + Math.random() * 1.5;
-            
-            center.position.x = radius * Math.sin(phi) * Math.cos(theta);
-            center.position.y = radius * Math.sin(phi) * Math.sin(theta);
-            center.position.z = radius * Math.cos(phi);
-            
-            nucleolusGroup.add(center);
-        }
-        
-        // Dense fibrillar component
-        const dfcGeometry = new THREE.SphereGeometry(3.5, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
-        const dfcMaterial = new THREE.MeshPhysicalMaterial({
-            color: 0x7a6b9d,
-            metalness: 0.2,
-            roughness: 0.3,
-            transparent: true,
-            opacity: 0.6
-        });
-        const dfc = new THREE.Mesh(dfcGeometry, dfcMaterial);
-        nucleolusGroup.add(dfc);
-        
-        nucleusGroup.add(nucleolusGroup);
-        scene.add(nucleusGroup);
-        
-        // Chromatin network inside nucleus - reduced for mobile
-        const chromatinCount = isLowEndDevice ? 10 : 30;
-        const chromatinGroup = new THREE.Group();
-        for (let i = 0; i < chromatinCount; i++) {
-            const startPoint = new THREE.Vector3(
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20
-            );
-            
-            const endPoint = new THREE.Vector3(
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20
-            );
-            
-            const controlPoint1 = new THREE.Vector3(
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20
-            );
-            
-            const controlPoint2 = new THREE.Vector3(
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20
-            );
-            
-            const chromatinCurve = new THREE.CubicBezierCurve3(
-                startPoint, controlPoint1, controlPoint2, endPoint
-            );
-            
-            const chromatinGeometry = new THREE.TubeGeometry(chromatinCurve, 10, 0.2, 8, false);
-            const chromatinMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x9370DB,
-                metalness: 0.2,
-                roughness: 0.4,
-                transparent: true,
-                opacity: 0.7
-            });
-            const chromatin = new THREE.Mesh(chromatinGeometry, chromatinMaterial);
-            chromatinGroup.add(chromatin);
-        }
-        nucleusGroup.add(chromatinGroup);
-        
-        // Advanced chloroplasts with detailed structure
+        // Chloroplasts with realistic structure - more and larger
         const chloroplastGroup = new THREE.Group();
-        const chloroplastCount = isLowEndDevice ? 5 : 15;
-        for (let i = 0; i < chloroplastCount; i++) {
-            const chloroplastGroupSingle = new THREE.Group();
-            
-            // Outer membrane with more detail
-            const outerGeometry = new THREE.SphereGeometry(3, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
+        for (let i = 0; i < 15; i++) {
+            // Outer membrane
+            const outerGeometry = new THREE.SphereGeometry(3, 32, 32);
             const outerMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0x2e8b57,
                 metalness: 0.1,
@@ -5433,10 +5119,9 @@ function init3DSpeciesChart() {
                 opacity: 0.6
             });
             const outerMembrane = new THREE.Mesh(outerGeometry, outerMaterial);
-            chloroplastGroupSingle.add(outerMembrane);
             
             // Inner membrane
-            const innerGeometry = new THREE.SphereGeometry(2.8, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
+            const innerGeometry = new THREE.SphereGeometry(2.8, 32, 32);
             const innerMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0x228b22,
                 metalness: 0.1,
@@ -5445,180 +5130,63 @@ function init3DSpeciesChart() {
                 opacity: 0.7
             });
             const innerMembrane = new THREE.Mesh(innerGeometry, innerMaterial);
-            chloroplastGroupSingle.add(innerMembrane);
             
-            // Thylakoid membrane system
-            const thylakoidGroup = new THREE.Group();
-            
-            // Grana stacks (thylakoid stacks)
-            const granaCount = isLowEndDevice ? 3 : 6;
-            for (let j = 0; j < granaCount; j++) {
-                const granumGroup = new THREE.Group();
-                
-                const granumX = (j - (granaCount/2 - 0.5)) * 1.2;
-                const granumZ = (j % 2 === 0) ? -0.8 : 0.8;
-                
-                // Create thylakoid discs in each granum
-                const discCount = isLowEndDevice ? 4 : 8;
-                for (let k = 0; k < discCount; k++) {
-                    const thylakoidGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.1, 16);
-                    const thylakoidMaterial = new THREE.MeshPhysicalMaterial({
-                        color: 0x006400,
-                        metalness: 0.2,
-                        roughness: 0.3,
-                        emissive: 0x006400,
-                        emissiveIntensity: 0.3
-                    });
-                    const thylakoid = new THREE.Mesh(thylakoidGeometry, thylakoidMaterial);
-                    thylakoid.position.set(granumX, k * 0.15 - (discCount * 0.15 / 2), granumZ);
-                    thylakoid.rotation.x = Math.PI / 2;
-                    granumGroup.add(thylakoid);
-                }
-                
-                thylakoidGroup.add(granumGroup);
-            }
-            
-            // Stroma lamellae connecting grana
-            const lamellaCount = isLowEndDevice ? 2 : 5;
-            for (let j = 0; j < lamellaCount; j++) {
-                const startX = (j - (lamellaCount/2 - 0.5)) * 1.2;
-                const endX = (j - (lamellaCount/2 - 1.5)) * 1.2;
-                const startZ = (j % 2 === 0) ? -0.8 : 0.8;
-                const endZ = ((j + 1) % 2 === 0) ? -0.8 : 0.8;
-                
-                const lamellaCurve = new THREE.CatmullRomCurve3([
-                    new THREE.Vector3(startX, 0, startZ),
-                    new THREE.Vector3((startX + endX) / 2, 0.3, (startZ + endZ) / 2),
-                    new THREE.Vector3(endX, 0, endZ)
-                ]);
-                
-                const lamellaGeometry = new THREE.TubeGeometry(lamellaCurve, 10, 0.1, 8, false);
-                const lamellaMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0x228b22,
+            // Thylakoid stacks (grana)
+            const granaGroup = new THREE.Group();
+            for (let j = 0; j < 10; j++) {
+                const granumGeometry = new THREE.CylinderGeometry(1, 1, 0.4, 16);
+                const granumMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x006400,
                     metalness: 0.2,
                     roughness: 0.3,
-                    transparent: true,
-                    opacity: 0.7
+                    emissive: 0x006400,
+                    emissiveIntensity: 0.3
                 });
-                const lamella = new THREE.Mesh(lamellaGeometry, lamellaMaterial);
-                thylakoidGroup.add(lamella);
+                const granum = new THREE.Mesh(granumGeometry, granumMaterial);
+                
+                // Position in a stack
+                granum.position.y = (j - 4.5) * 0.5;
+                granum.position.x = (j % 2 === 0) ? 0.7 : -0.7;
+                granaGroup.add(granum);
             }
             
-            chloroplastGroupSingle.add(thylakoidGroup);
-            
-            // Stroma with ribosomes
-            const stromaGeometry = new THREE.SphereGeometry(2.6, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
-            const stromaMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x90EE90,
-                metalness: 0.0,
-                roughness: 0.8,
-                transparent: true,
-                opacity: 0.3
-            });
-            const stroma = new THREE.Mesh(stromaGeometry, stromaMaterial);
-            chloroplastGroupSingle.add(stroma);
-            
-            // Chloroplast ribosomes
-            const ribosomeCount = isLowEndDevice ? 5 : 20;
-            for (let j = 0; j < ribosomeCount; j++) {
-                const ribosomeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-                const ribosomeMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0x32CD32,
-                    metalness: 0.2,
-                    roughness: 0.3,
-                    emissive: 0x32CD32,
-                    emissiveIntensity: 0.2
-                });
-                const ribosome = new THREE.Mesh(ribosomeGeometry, ribosomeMaterial);
-                
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.random() * Math.PI;
-                const radius = 1.0 + Math.random() * 1.5;
-                
-                ribosome.position.x = radius * Math.sin(phi) * Math.cos(theta);
-                ribosome.position.y = radius * Math.sin(phi) * Math.sin(theta);
-                ribosome.position.z = radius * Math.cos(phi);
-                
-                chloroplastGroupSingle.add(ribosome);
-            }
-            
-            // Starch grains
-            const starchCount = isLowEndDevice ? 1 : 3;
-            for (let j = 0; j < starchCount; j++) {
-                const starchGeometry = new THREE.SphereGeometry(0.4, 8, 8);
-                const starchMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0xF5F5DC,
-                    metalness: 0.1,
-                    roughness: 0.2,
-                    transparent: true,
-                    opacity: 0.8
-                });
-                const starch = new THREE.Mesh(starchGeometry, starchMaterial);
-                
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.random() * Math.PI;
-                const radius = 1.0 + Math.random() * 1.0;
-                
-                starch.position.x = radius * Math.sin(phi) * Math.cos(theta);
-                starch.position.y = radius * Math.sin(phi) * Math.sin(theta);
-                starch.position.z = radius * Math.cos(phi);
-                
-                chloroplastGroupSingle.add(starch);
-            }
+            // Combine into chloroplast
+            const chloroplast = new THREE.Group();
+            chloroplast.add(outerMembrane);
+            chloroplast.add(innerMembrane);
+            chloroplast.add(granaGroup);
             
             // Position randomly in cell
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI;
             const radius = 15 + Math.random() * 15;
             
-            chloroplastGroupSingle.position.x = radius * Math.sin(phi) * Math.cos(theta);
-            chloroplastGroupSingle.position.y = radius * Math.sin(phi) * Math.sin(theta);
-            chloroplastGroupSingle.position.z = radius * Math.cos(phi);
+            chloroplast.position.x = radius * Math.sin(phi) * Math.cos(theta);
+            chloroplast.position.y = radius * Math.sin(phi) * Math.sin(theta);
+            chloroplast.position.z = radius * Math.cos(phi);
             
-            chloroplastGroup.add(chloroplastGroupSingle);
+            chloroplastGroup.add(chloroplast);
         }
         scene.add(chloroplastGroup);
         
-        // Advanced mitochondria with detailed cristae
+        // Mitochondria with cristae - more and larger
         const mitochondriaGroup = new THREE.Group();
-        const mitochondriaCount = isLowEndDevice ? 4 : 12;
-        for (let i = 0; i < mitochondriaCount; i++) {
-            const mitochondrionGroup = new THREE.Group();
-            
-            // Outer membrane
-            const outerGeometry = new THREE.CylinderGeometry(1.5, 1.5, 4, qualitySettings.organelleSegments);
-            const outerMaterial = new THREE.MeshPhysicalMaterial({
+        for (let i = 0; i < 12; i++) {
+            const mitochondrionGeometry = new THREE.CylinderGeometry(1.5, 1.5, 4, 32);
+            const mitochondrionMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0xff6347,
                 metalness: 0.2,
                 roughness: 0.6,
                 transparent: true,
                 opacity: 0.7
             });
-            const outerMembrane = new THREE.Mesh(outerGeometry, outerMaterial);
-            mitochondrionGroup.add(outerMembrane);
+            const mitochondrion = new THREE.Mesh(mitochondrionGeometry, mitochondrionMaterial);
             
-            // Inner membrane with detailed cristae
-            const innerGeometry = new THREE.CylinderGeometry(1.3, 1.3, 3.8, qualitySettings.organelleSegments);
-            const innerMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0xcd5c5c,
-                metalness: 0.2,
-                roughness: 0.5,
-                transparent: true,
-                opacity: 0.7
-            });
-            const innerMembrane = new THREE.Mesh(innerGeometry, innerMaterial);
-            mitochondrionGroup.add(innerMembrane);
-            
-            // Cristae (inner membrane folds)
-            const cristaCount = isLowEndDevice ? 6 : 12;
-            for (let j = 0; j < cristaCount; j++) {
-                const cristaGroup = new THREE.Group();
-                
-                // Crista membrane
-                const cristaAngle = (j / cristaCount) * Math.PI * 2;
-                const cristaGeometry = new THREE.PlaneGeometry(1.5, 3.5);
+            // Inner membrane with cristae
+            for (let j = 0; j < 8; j++) {
+                const cristaGeometry = new THREE.PlaneGeometry(1, 3.5);
                 const cristaMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0xff7f50,
+                    color: 0xcd5c5c,
                     metalness: 0.3,
                     roughness: 0.4,
                     transparent: true,
@@ -5626,95 +5194,30 @@ function init3DSpeciesChart() {
                     side: THREE.DoubleSide
                 });
                 const crista = new THREE.Mesh(cristaGeometry, cristaMaterial);
-                crista.rotation.y = cristaAngle;
-                crista.position.x = Math.cos(cristaAngle) * 1.0;
-                crista.position.z = Math.sin(cristaAngle) * 1.0;
-                cristaGroup.add(crista);
-                
-                // ATP synthase complexes on cristae
-                const synthaseCount = isLowEndDevice ? 2 : 5;
-                for (let k = 0; k < synthaseCount; k++) {
-                    const synthaseGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.3, 8);
-                    const synthaseMaterial = new THREE.MeshPhysicalMaterial({
-                        color: 0xffd700,
-                        metalness: 0.3,
-                        roughness: 0.2,
-                        emissive: 0xffd700,
-                        emissiveIntensity: 0.3
-                    });
-                    const synthase = new THREE.Mesh(synthaseGeometry, synthaseMaterial);
-                    
-                    const height = (k - (synthaseCount/2 - 0.5)) * 0.7;
-                    synthase.position.set(
-                        Math.cos(cristaAngle) * 1.2,
-                        height,
-                        Math.sin(cristaAngle) * 1.2
-                    );
-                    synthase.rotation.x = Math.PI / 2;
-                    synthase.rotation.y = cristaAngle;
-                    cristaGroup.add(synthase);
-                }
-                
-                mitochondrionGroup.add(cristaGroup);
+                crista.rotation.y = (j / 8) * Math.PI * 2;
+                crista.position.x = Math.cos((j / 8) * Math.PI * 2) * 1.0;
+                crista.position.z = Math.sin((j / 8) * Math.PI * 2) * 1.0;
+                mitochondrion.add(crista);
             }
-            
-            // Mitochondrial matrix
-            const matrixGeometry = new THREE.CylinderGeometry(1.2, 1.2, 3.6, qualitySettings.organelleSegments);
-            const matrixMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0xffa07a,
-                metalness: 0.1,
-                roughness: 0.7,
-                transparent: true,
-                opacity: 0.4
-            });
-            const matrix = new THREE.Mesh(matrixGeometry, matrixMaterial);
-            mitochondrionGroup.add(matrix);
-            
-            // Mitochondrial DNA
-            const mtDNA = new THREE.Group();
-            for (let j = 0; j < 3; j++) {
-                const dnaCurve = new THREE.CatmullRomCurve3([
-                    new THREE.Vector3(0.5, (j - 1) * 1.0, 0),
-                    new THREE.Vector3(0, (j - 1) * 1.0, 0.5),
-                    new THREE.Vector3(-0.5, (j - 1) * 1.0, 0),
-                    new THREE.Vector3(0, (j - 1) * 1.0, -0.5),
-                    new THREE.Vector3(0.5, (j - 1) * 1.0, 0)
-                ]);
-                
-                const dnaGeometry = new THREE.TubeGeometry(dnaCurve, 10, 0.05, 8, false);
-                const dnaMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0xffffff,
-                    metalness: 0.3,
-                    roughness: 0.2,
-                    transparent: true,
-                    opacity: 0.8
-                });
-                const dna = new THREE.Mesh(dnaGeometry, dnaMaterial);
-                mtDNA.add(dna);
-            }
-            mitochondrionGroup.add(mtDNA);
             
             // Position randomly
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI;
             const radius = 12 + Math.random() * 20;
             
-            mitochondrionGroup.position.x = radius * Math.sin(phi) * Math.cos(theta);
-            mitochondrionGroup.position.y = radius * Math.sin(phi) * Math.sin(theta);
-            mitochondrionGroup.position.z = radius * Math.cos(phi);
+            mitochondrion.position.x = radius * Math.sin(phi) * Math.cos(theta);
+            mitochondrion.position.y = radius * Math.sin(phi) * Math.sin(theta);
+            mitochondrion.position.z = radius * Math.cos(phi);
             
-            mitochondrionGroup.rotation.x = Math.random() * Math.PI;
-            mitochondrionGroup.rotation.y = Math.random() * Math.PI;
+            mitochondrion.rotation.x = Math.random() * Math.PI;
+            mitochondrion.rotation.y = Math.random() * Math.PI;
             
-            mitochondriaGroup.add(mitochondrionGroup);
+            mitochondriaGroup.add(mitochondrion);
         }
         scene.add(mitochondriaGroup);
         
-        // Advanced vacuole with tonoplast
-        const vacuoleGroup = new THREE.Group();
-        
-        // Main vacuole
-        const vacuoleGeometry = new THREE.SphereGeometry(15, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
+        // Vacuole with tonoplast - larger
+        const vacuoleGeometry = new THREE.SphereGeometry(15, 32, 32);
         const vacuoleMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x90ee90,
             metalness: 0.0,
@@ -5725,10 +5228,10 @@ function init3DSpeciesChart() {
         });
         const vacuole = new THREE.Mesh(vacuoleGeometry, vacuoleMaterial);
         vacuole.position.set(-20, -10, -10);
-        vacuoleGroup.add(vacuole);
+        scene.add(vacuole);
         
-        // Tonoplast (vacuole membrane) with transport proteins
-        const tonoplastGeometry = new THREE.SphereGeometry(15.1, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
+        // Tonoplast (vacuole membrane)
+        const tonoplastGeometry = new THREE.SphereGeometry(15.1, 32, 32);
         const tonoplastMaterial = new THREE.MeshPhysicalMaterial({
             color: 0x228b22,
             metalness: 0.1,
@@ -5739,51 +5242,19 @@ function init3DSpeciesChart() {
         });
         const tonoplast = new THREE.Mesh(tonoplastGeometry, tonoplastMaterial);
         tonoplast.position.copy(vacuole.position);
-        vacuoleGroup.add(tonoplast);
+        scene.add(tonoplast);
         
-        // Transport proteins in tonoplast
-        const proteinCount = isLowEndDevice ? 10 : 30;
-        for (let i = 0; i < proteinCount; i++) {
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI;
-            const radius = 15.1;
-            
-            const x = radius * Math.sin(phi) * Math.cos(theta);
-            const y = radius * Math.sin(phi) * Math.sin(theta);
-            const z = radius * Math.cos(phi);
-            
-            const proteinGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.6, 8);
-            const proteinMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x32CD32,
-                metalness: 0.3,
-                roughness: 0.2,
-                emissive: 0x32CD32,
-                emissiveIntensity: 0.2
-            });
-            const protein = new THREE.Mesh(proteinGeometry, proteinMaterial);
-            protein.position.set(x, y, z);
-            protein.lookAt(0, 0, 0);
-            protein.rotateX(Math.PI / 2);
-            vacuoleGroup.add(protein);
-        }
-        
-        scene.add(vacuoleGroup);
-        
-        // Advanced endoplasmic reticulum
+        // Endoplasmic reticulum - more extensive
         const erGroup = new THREE.Group();
-        
-        // Rough ER with ribosomes
-        const roughERGroup = new THREE.Group();
-        const roughERCount = isLowEndDevice ? 2 : 5;
-        for (let i = 0; i < roughERCount; i++) {
+        for (let i = 0; i < 10; i++) {
             const erCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(-15, i * 4 - 10, -15),
-                new THREE.Vector3(0, i * 4 - 10, 0),
-                new THREE.Vector3(15, i * 4 - 10, 15),
-                new THREE.Vector3(0, i * 4 - 10, 0)
+                new THREE.Vector3(-15, i * 4 - 15, -15),
+                new THREE.Vector3(0, i * 4 - 15, 0),
+                new THREE.Vector3(15, i * 4 - 15, 15),
+                new THREE.Vector3(0, i * 4 - 15, 0)
             ]);
             
-            const erGeometry = new THREE.TubeGeometry(erCurve, 20, 0.4, 8, false);
+            const erGeometry = new THREE.TubeGeometry(erCurve, 50, 0.4, 8, false);
             const erMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0x9370db,
                 metalness: 0.2,
@@ -5792,65 +5263,14 @@ function init3DSpeciesChart() {
                 opacity: 0.6
             });
             const er = new THREE.Mesh(erGeometry, erMaterial);
-            roughERGroup.add(er);
-            
-            // Add ribosomes to rough ER
-            const ribosomeCount = isLowEndDevice ? 5 : 20;
-            for (let j = 0; j < ribosomeCount; j++) {
-                const t = j / ribosomeCount;
-                const point = erCurve.getPoint(t);
-                
-                const ribosomeGeometry = new THREE.SphereGeometry(0.2, 8, 8);
-                const ribosomeMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0xdaa520,
-                    metalness: 0.3,
-                    roughness: 0.2,
-                    emissive: 0xdaa520,
-                    emissiveIntensity: 0.4
-                });
-                const ribosome = new THREE.Mesh(ribosomeGeometry, ribosomeMaterial);
-                ribosome.position.copy(point);
-                roughERGroup.add(ribosome);
-            }
+            erGroup.add(er);
         }
-        erGroup.add(roughERGroup);
-        
-        // Smooth ER
-        const smoothERGroup = new THREE.Group();
-        const smoothERCount = isLowEndDevice ? 2 : 5;
-        for (let i = 0; i < smoothERCount; i++) {
-            const erCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(-15, i * 4 - 30, -15),
-                new THREE.Vector3(0, i * 4 - 30, 0),
-                new THREE.Vector3(15, i * 4 - 30, 15),
-                new THREE.Vector3(0, i * 4 - 30, 0)
-            ]);
-            
-            const erGeometry = new THREE.TubeGeometry(erCurve, 20, 0.4, 8, false);
-            const erMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x8a2be2,
-                metalness: 0.2,
-                roughness: 0.5,
-                transparent: true,
-                opacity: 0.6
-            });
-            const er = new THREE.Mesh(erGeometry, erMaterial);
-            smoothERGroup.add(er);
-        }
-        erGroup.add(smoothERGroup);
-        
         scene.add(erGroup);
         
-        // Advanced Golgi apparatus
+        // Golgi apparatus - new addition
         const golgiGroup = new THREE.Group();
-        
-        // Golgi stack with multiple cisternae
-        const cisternaCount = isLowEndDevice ? 3 : 5;
-        for (let i = 0; i < cisternaCount; i++) {
-            const cisternaGroup = new THREE.Group();
-            
-            // Cisterna membrane
-            const cisternaGeometry = new THREE.CylinderGeometry(3, 3, 0.3, qualitySettings.organelleSegments);
+        for (let i = 0; i < 5; i++) {
+            const cisternaGeometry = new THREE.CylinderGeometry(3, 3, 0.3, 32);
             const cisternaMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0xda70d6,
                 metalness: 0.2,
@@ -5859,120 +5279,42 @@ function init3DSpeciesChart() {
                 opacity: 0.7
             });
             const cisterna = new THREE.Mesh(cisternaGeometry, cisternaMaterial);
-            cisterna.position.set(15, i * 0.5 - (cisternaCount * 0.5 / 2), 0);
+            cisterna.position.set(15, i * 0.5 - 1, 0);
             cisterna.rotation.x = Math.PI / 2;
-            cisternaGroup.add(cisterna);
-            
-            // Vesicles budding from Golgi
-            const vesicleCount = isLowEndDevice ? 3 : 8;
-            for (let j = 0; j < vesicleCount; j++) {
-                const vesicleGeometry = new THREE.SphereGeometry(0.2, 8, 8);
-                const vesicleMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0xda70d6,
-                    metalness: 0.2,
-                    roughness: 0.5,
-                    transparent: true,
-                    opacity: 0.7
-                });
-                const vesicle = new THREE.Mesh(vesicleGeometry, vesicleMaterial);
-                
-                const angle = (j / vesicleCount) * Math.PI * 2;
-                const radius = 3.2;
-                vesicle.position.set(
-                    15 + Math.cos(angle) * radius,
-                    i * 0.5 - (cisternaCount * 0.5 / 2),
-                    Math.sin(angle) * radius
-                );
-                cisternaGroup.add(vesicle);
-            }
-            
-            golgiGroup.add(cisternaGroup);
+            golgiGroup.add(cisterna);
         }
-        
-        // Trans Golgi network
-        const tgnGroup = new THREE.Group();
-        const tgnVesicleCount = isLowEndDevice ? 8 : 20;
-        for (let i = 0; i < tgnVesicleCount; i++) {
-            const vesicleGeometry = new THREE.SphereGeometry(0.3, 8, 8);
-            const vesicleMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0xdda0dd,
-                metalness: 0.2,
-                roughness: 0.5,
-                transparent: true,
-                opacity: 0.7
-            });
-            const vesicle = new THREE.Mesh(vesicleGeometry, vesicleMaterial);
-            
-            vesicle.position.set(
-                15 + (Math.random() - 0.5) * 8,
-                (Math.random() - 0.5) * 4,
-                (Math.random() - 0.5) * 8
-            );
-            
-            tgnGroup.add(vesicle);
-        }
-        golgiGroup.add(tgnGroup);
-        
         scene.add(golgiGroup);
         
-        // Advanced ribosomes
+        // Ribosomes - more
         const ribosomeGroup = new THREE.Group();
-        const ribosomeTotalCount = isLowEndDevice ? 50 : 150;
-        for (let i = 0; i < ribosomeTotalCount; i++) {
-            const ribosomeGroupSingle = new THREE.Group();
-            
-            // Large subunit
-            const largeSubunitGeometry = new THREE.SphereGeometry(0.2, 8, 8);
-            const largeSubunitMaterial = new THREE.MeshPhysicalMaterial({
+        for (let i = 0; i < 150; i++) {
+            const ribosomeGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const ribosomeMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0xdaa520,
                 metalness: 0.3,
                 roughness: 0.2,
                 emissive: 0xdaa520,
                 emissiveIntensity: 0.4
             });
-            const largeSubunit = new THREE.Mesh(largeSubunitGeometry, largeSubunitMaterial);
-            largeSubunit.position.y = 0.1;
-            ribosomeGroupSingle.add(largeSubunit);
-            
-            // Small subunit
-            const smallSubunitGeometry = new THREE.SphereGeometry(0.15, 8, 8);
-            const smallSubunitMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0xb8860b,
-                metalness: 0.3,
-                roughness: 0.2,
-                emissive: 0xb8860b,
-                emissiveIntensity: 0.3
-            });
-            const smallSubunit = new THREE.Mesh(smallSubunitGeometry, smallSubunitMaterial);
-            smallSubunit.position.y = -0.1;
-            ribosomeGroupSingle.add(smallSubunit);
+            const ribosome = new THREE.Mesh(ribosomeGeometry, ribosomeMaterial);
             
             // Position randomly in cell
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI;
             const radius = 5 + Math.random() * 30;
             
-            ribosomeGroupSingle.position.x = radius * Math.sin(phi) * Math.cos(theta);
-            ribosomeGroupSingle.position.y = radius * Math.sin(phi) * Math.sin(theta);
-            ribosomeGroupSingle.position.z = radius * Math.cos(phi);
+            ribosome.position.x = radius * Math.sin(phi) * Math.cos(theta);
+            ribosome.position.y = radius * Math.sin(phi) * Math.sin(theta);
+            ribosome.position.z = radius * Math.cos(phi);
             
-            // Random orientation
-            ribosomeGroupSingle.rotation.x = Math.random() * Math.PI;
-            ribosomeGroupSingle.rotation.y = Math.random() * Math.PI;
-            ribosomeGroupSingle.rotation.z = Math.random() * Math.PI;
-            
-            ribosomeGroup.add(ribosomeGroupSingle);
+            ribosomeGroup.add(ribosome);
         }
         scene.add(ribosomeGroup);
         
-        // Advanced peroxisomes
+        // Peroxisomes - new addition
         const peroxisomeGroup = new THREE.Group();
-        const peroxisomeCount = isLowEndDevice ? 3 : 8;
-        for (let i = 0; i < peroxisomeCount; i++) {
-            const peroxisomeGroupSingle = new THREE.Group();
-            
-            // Peroxisome membrane
-            const peroxisomeGeometry = new THREE.SphereGeometry(1.2, 8, 8);
+        for (let i = 0; i < 8; i++) {
+            const peroxisomeGeometry = new THREE.SphereGeometry(1.2, 16, 16);
             const peroxisomeMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0xff8c00,
                 metalness: 0.2,
@@ -5981,64 +5323,23 @@ function init3DSpeciesChart() {
                 opacity: 0.7
             });
             const peroxisome = new THREE.Mesh(peroxisomeGeometry, peroxisomeMaterial);
-            peroxisomeGroupSingle.add(peroxisome);
-            
-            // Crystalloid core (in some plant peroxisomes)
-            const coreGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-            const coreMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0xffa500,
-                metalness: 0.3,
-                roughness: 0.2,
-                transparent: true,
-                opacity: 0.8
-            });
-            const core = new THREE.Mesh(coreGeometry, coreMaterial);
-            peroxisomeGroupSingle.add(core);
-            
-            // Enzymes inside peroxisome
-            const enzymeCount = isLowEndDevice ? 3 : 10;
-            for (let j = 0; j < enzymeCount; j++) {
-                const enzymeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-                const enzymeMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0xff4500,
-                    metalness: 0.2,
-                    roughness: 0.3,
-                    emissive: 0xff4500,
-                    emissiveIntensity: 0.2
-                });
-                const enzyme = new THREE.Mesh(enzymeGeometry, enzymeMaterial);
-                
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.random() * Math.PI;
-                const radius = 0.3 + Math.random() * 0.7;
-                
-                enzyme.position.x = radius * Math.sin(phi) * Math.cos(theta);
-                enzyme.position.y = radius * Math.sin(phi) * Math.sin(theta);
-                enzyme.position.z = radius * Math.cos(phi);
-                
-                peroxisomeGroupSingle.add(enzyme);
-            }
             
             // Position randomly
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI;
             const radius = 10 + Math.random() * 20;
             
-            peroxisomeGroupSingle.position.x = radius * Math.sin(phi) * Math.cos(theta);
-            peroxisomeGroupSingle.position.y = radius * Math.sin(phi) * Math.sin(theta);
-            peroxisomeGroupSingle.position.z = radius * Math.cos(phi);
+            peroxisome.position.x = radius * Math.sin(phi) * Math.cos(theta);
+            peroxisome.position.y = radius * Math.sin(phi) * Math.sin(theta);
+            peroxisome.position.z = radius * Math.cos(phi);
             
-            peroxisomeGroup.add(peroxisomeGroupSingle);
+            peroxisomeGroup.add(peroxisome);
         }
         scene.add(peroxisomeGroup);
         
-        // Advanced cytoskeleton
+        // Cytoskeleton - new addition (microtubules)
         const cytoskeletonGroup = new THREE.Group();
-        
-        // Microtubules
-        const microtubuleGroup = new THREE.Group();
-        const microtubuleCount = isLowEndDevice ? 8 : 20;
-        for (let i = 0; i < microtubuleCount; i++) {
+        for (let i = 0; i < 20; i++) {
             const startTheta = Math.random() * Math.PI * 2;
             const startPhi = Math.random() * Math.PI;
             const startRadius = 5;
@@ -6061,7 +5362,7 @@ function init3DSpeciesChart() {
                 new THREE.Vector3(endX, endY, endZ)
             ]);
             
-            const microtubuleGeometry = new THREE.TubeGeometry(microtubuleCurve, 10, 0.05, 4, false);
+            const microtubuleGeometry = new THREE.TubeGeometry(microtubuleCurve, 20, 0.05, 4, false);
             const microtubuleMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0xffffff,
                 metalness: 0.3,
@@ -6070,112 +5371,13 @@ function init3DSpeciesChart() {
                 opacity: 0.6
             });
             const microtubule = new THREE.Mesh(microtubuleGeometry, microtubuleMaterial);
-            microtubuleGroup.add(microtubule);
-            
-            // Add tubulin dimers along microtubule
-            const dimerCount = isLowEndDevice ? 3 : 10;
-            for (let j = 0; j < dimerCount; j++) {
-                const t = j / dimerCount;
-                const point = microtubuleCurve.getPoint(t);
-                
-                const dimerGeometry = new THREE.SphereGeometry(0.08, 8, 8);
-                const dimerMaterial = new THREE.MeshPhysicalMaterial({
-                    color: 0xf0f8ff,
-                    metalness: 0.3,
-                    roughness: 0.2,
-                    emissive: 0xf0f8ff,
-                    emissiveIntensity: 0.2
-                });
-                const dimer = new THREE.Mesh(dimerGeometry, dimerMaterial);
-                dimer.position.copy(point);
-                microtubuleGroup.add(dimer);
-            }
+            cytoskeletonGroup.add(microtubule);
         }
-        cytoskeletonGroup.add(microtubuleGroup);
-        
-        // Actin filaments
-        const actinGroup = new THREE.Group();
-        const actinCount = isLowEndDevice ? 10 : 30;
-        for (let i = 0; i < actinCount; i++) {
-            const startTheta = Math.random() * Math.PI * 2;
-            const startPhi = Math.random() * Math.PI;
-            const startRadius = 5 + Math.random() * 10;
-            
-            const startX = startRadius * Math.sin(startPhi) * Math.cos(startTheta);
-            const startY = startRadius * Math.sin(startPhi) * Math.sin(startTheta);
-            const startZ = startRadius * Math.cos(startPhi);
-            
-            const endTheta = startTheta + (Math.random() - 0.5) * Math.PI / 2;
-            const endPhi = startPhi + (Math.random() - 0.5) * Math.PI / 4;
-            const endRadius = startRadius + (Math.random() - 0.5) * 10;
-            
-            const endX = endRadius * Math.sin(endPhi) * Math.cos(endTheta);
-            const endY = endRadius * Math.sin(endPhi) * Math.sin(endTheta);
-            const endZ = endRadius * Math.cos(endPhi);
-            
-            const actinCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(startX, startY, startZ),
-                new THREE.Vector3((startX + endX) / 2, (startY + endY) / 2, (startZ + endZ) / 2),
-                new THREE.Vector3(endX, endY, endZ)
-            ]);
-            
-            const actinGeometry = new THREE.TubeGeometry(actinCurve, 8, 0.03, 4, false);
-            const actinMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0xff69b4,
-                metalness: 0.3,
-                roughness: 0.2,
-                transparent: true,
-                opacity: 0.6
-            });
-            const actin = new THREE.Mesh(actinGeometry, actinMaterial);
-            actinGroup.add(actin);
-        }
-        cytoskeletonGroup.add(actinGroup);
-        
-        // Intermediate filaments
-        const intermediateGroup = new THREE.Group();
-        const intermediateCount = isLowEndDevice ? 8 : 25;
-        for (let i = 0; i < intermediateCount; i++) {
-            const startTheta = Math.random() * Math.PI * 2;
-            const startPhi = Math.random() * Math.PI;
-            const startRadius = 5 + Math.random() * 15;
-            
-            const startX = startRadius * Math.sin(startPhi) * Math.cos(startTheta);
-            const startY = startRadius * Math.sin(startPhi) * Math.sin(startTheta);
-            const startZ = startRadius * Math.cos(startPhi);
-            
-            const endTheta = startTheta + (Math.random() - 0.5) * Math.PI / 3;
-            const endPhi = startPhi + (Math.random() - 0.5) * Math.PI / 6;
-            const endRadius = startRadius + (Math.random() - 0.5) * 5;
-            
-            const endX = endRadius * Math.sin(endPhi) * Math.cos(endTheta);
-            const endY = endRadius * Math.sin(endPhi) * Math.sin(endTheta);
-            const endZ = endRadius * Math.cos(endPhi);
-            
-            const intermediateCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(startX, startY, startZ),
-                new THREE.Vector3((startX + endX) / 2, (startY + endY) / 2, (startZ + endZ) / 2),
-                new THREE.Vector3(endX, endY, endZ)
-            ]);
-            
-            const intermediateGeometry = new THREE.TubeGeometry(intermediateCurve, 6, 0.02, 4, false);
-            const intermediateMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0x20b2aa,
-                metalness: 0.3,
-                roughness: 0.2,
-                transparent: true,
-                opacity: 0.6
-            });
-            const intermediate = new THREE.Mesh(intermediateGeometry, intermediateMaterial);
-            intermediateGroup.add(intermediate);
-        }
-        cytoskeletonGroup.add(intermediateGroup);
-        
         scene.add(cytoskeletonGroup);
         
-        // Advanced cytoplasmic streaming
+        // Cytoplasmic streaming particles - more
         const streamingGeometry = new THREE.BufferGeometry();
-        const streamingCount = qualitySettings.particleCount;
+        const streamingCount = 1500;
         const streamingPositions = new Float32Array(streamingCount * 3);
         const streamingVelocities = [];
         
@@ -6203,7 +5405,7 @@ function init3DSpeciesChart() {
         streamingGeometry.setAttribute('position', new THREE.BufferAttribute(streamingPositions, 3));
         const streamingMaterial = new THREE.PointsMaterial({
             color: 0x90ee90,
-            size: isLowEndDevice ? 0.08 : 0.1,
+            size: 0.1,
             transparent: true,
             opacity: 0.7,
             blending: THREE.AdditiveBlending
@@ -6212,57 +5414,57 @@ function init3DSpeciesChart() {
         const streamingParticles = new THREE.Points(streamingGeometry, streamingMaterial);
         scene.add(streamingParticles);
         
-        // DNA Helix Parameters (inside nucleus) - Enhanced for visibility
-        const basePairs = isLowEndDevice ? 20 : 40;
-        const helixRadius = isLowEndDevice ? 2.5 : 3; // Increased for better visibility
+        // DNA Helix Parameters (inside nucleus) - larger
+        const basePairs = 40;
+        const helixRadius = 2;
         const helixHeight = 0.3;
-        const backboneRadius = isLowEndDevice ? 0.15 : 0.2; // Increased for better visibility
+        const backboneRadius = 0.1;
         const basePairWidth = 0.15;
         const basePairHeight = 0.05;
         
-        // Nucleotide materials with enhanced properties for better visibility
+        // Nucleotide materials with advanced properties
         const nucleotideMaterials = {
             'A': new THREE.MeshPhysicalMaterial({
                 color: 0xff0000,
                 metalness: 0.2,
                 roughness: 0.3,
-                transparent: false, // Not transparent for better visibility
-                opacity: 1.0,
-                emissive: 0xff0000,
-                emissiveIntensity: 0.6 // Increased emissive intensity
+                transparent: true,
+                opacity: 0.9,
+                emissive: 0x440000,
+                emissiveIntensity: 0.4
             }),
             'T': new THREE.MeshPhysicalMaterial({
                 color: 0x00ff00,
                 metalness: 0.2,
                 roughness: 0.3,
-                transparent: false, // Not transparent for better visibility
-                opacity: 1.0,
-                emissive: 0x00ff00,
-                emissiveIntensity: 0.6 // Increased emissive intensity
+                transparent: true,
+                opacity: 0.9,
+                emissive: 0x004400,
+                emissiveIntensity: 0.4
             }),
             'G': new THREE.MeshPhysicalMaterial({
                 color: 0x0000ff,
                 metalness: 0.2,
                 roughness: 0.3,
-                transparent: false, // Not transparent for better visibility
-                opacity: 1.0,
-                emissive: 0x0000ff,
-                emissiveIntensity: 0.6 // Increased emissive intensity
+                transparent: true,
+                opacity: 0.9,
+                emissive: 0x000044,
+                emissiveIntensity: 0.4
             }),
             'C': new THREE.MeshPhysicalMaterial({
                 color: 0xffff00,
                 metalness: 0.2,
                 roughness: 0.3,
-                transparent: false, // Not transparent for better visibility
-                opacity: 1.0,
-                emissive: 0xffff00,
-                emissiveIntensity: 0.6 // Increased emissive intensity
+                transparent: true,
+                opacity: 0.9,
+                emissive: 0x444400,
+                emissiveIntensity: 0.4
             })
         };
         
         // Create DNA group inside nucleus
         const dnaGroup = new THREE.Group();
-        nucleusGroup.add(dnaGroup);
+        nucleus.add(dnaGroup);
         
         // Create DNA backbones with enhanced geometry
         const backboneCurve1 = new THREE.CatmullRomCurve3([]);
@@ -6281,25 +5483,23 @@ function init3DSpeciesChart() {
             backboneCurve2.points.push(new THREE.Vector3(x2, y, z2));
         }
         
-        const backboneGeometry1 = new THREE.TubeGeometry(backboneCurve1, qualitySettings.dnaSegments, backboneRadius, 16, false);
-        const backboneGeometry2 = new THREE.TubeGeometry(backboneCurve2, qualitySettings.dnaSegments, backboneRadius, 16, false);
+        const backboneGeometry1 = new THREE.TubeGeometry(backboneCurve1, 200, backboneRadius, 16, false);
+        const backboneGeometry2 = new THREE.TubeGeometry(backboneCurve2, 200, backboneRadius, 16, false);
         
         const backboneMaterial = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
             metalness: 0.3,
             roughness: 0.2,
-            transparent: false, // Not transparent for better visibility
-            opacity: 1.0,
-            emissive: 0xffffff,
-            emissiveIntensity: 0.8 // Increased emissive intensity
+            transparent: true,
+            opacity: 0.9,
+            emissive: 0x222222,
+            emissiveIntensity: 0.3
         });
         
         const backbone1 = new THREE.Mesh(backboneGeometry1, backboneMaterial);
         const backbone2 = new THREE.Mesh(backboneGeometry2, backboneMaterial);
-        if (!isLowEndDevice) {
-            backbone1.castShadow = true;
-            backbone2.castShadow = true;
-        }
+        backbone1.castShadow = true;
+        backbone2.castShadow = true;
         dnaGroup.add(backbone1, backbone2);
         
         // Generate DNA sequence
@@ -6323,23 +5523,19 @@ function init3DSpeciesChart() {
             // Create base pair group
             const basePairGroup = new THREE.Group();
             
-            // Nucleotide spheres with enhanced geometry - increased size for visibility
+            // Nucleotide spheres with enhanced geometry
             const base = sequence[i];
-            const nucleotideGeometry = new THREE.SphereGeometry(isLowEndDevice ? 0.25 : 0.3, 16, 16);
+            const nucleotideGeometry = new THREE.SphereGeometry(0.2, 32, 32);
             const nucleotide1 = new THREE.Mesh(nucleotideGeometry, nucleotideMaterials[base]);
             nucleotide1.position.set(x1, y, z1);
-            if (!isLowEndDevice) {
-                nucleotide1.castShadow = true;
-            }
+            nucleotide1.castShadow = true;
             nucleotide1.userData = { type: 'nucleotide', base: base, position: i };
             basePairGroup.add(nucleotide1);
             
             const complementaryBase = base === 'A' ? 'T' : base === 'T' ? 'A' : base === 'G' ? 'C' : 'G';
             const nucleotide2 = new THREE.Mesh(nucleotideGeometry, nucleotideMaterials[complementaryBase]);
             nucleotide2.position.set(x2, y, z2);
-            if (!isLowEndDevice) {
-                nucleotide2.castShadow = true;
-            }
+            nucleotide2.castShadow = true;
             nucleotide2.userData = { type: 'nucleotide', base: complementaryBase, position: i };
             basePairGroup.add(nucleotide2);
             
@@ -6350,10 +5546,8 @@ function init3DSpeciesChart() {
                 color: 0xffffff,
                 metalness: 0.3,
                 roughness: 0.2,
-                transparent: false, // Not transparent for better visibility
-                opacity: 1.0,
-                emissive: 0xffffff,
-                emissiveIntensity: 0.8
+                transparent: true,
+                opacity: 0.8
             });
             
             const connector = new THREE.Mesh(connectorGeometry, connectorMaterial);
@@ -6368,8 +5562,8 @@ function init3DSpeciesChart() {
                     Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(z2 - z1, 2)) * 0.8, 8);
                 const bondMaterial = new THREE.MeshBasicMaterial({
                     color: 0xffffff,
-                    transparent: false, // Not transparent for better visibility
-                    opacity: 1.0
+                    transparent: true,
+                    opacity: 0.5
                 });
                 
                 const bond = new THREE.Mesh(bondGeometry, bondMaterial);
@@ -6389,47 +5583,43 @@ function init3DSpeciesChart() {
             const x = Math.cos(angle) * helixRadius;
             const z = Math.sin(angle) * helixRadius;
             
-            // Sugar molecule - increased size for visibility
-            const sugarGeometry = new THREE.IcosahedronGeometry(isLowEndDevice ? 0.2 : 0.25, 1);
+            // Sugar molecule
+            const sugarGeometry = new THREE.IcosahedronGeometry(0.15, 1);
             const sugarMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0xffd166,
                 metalness: 0.3,
                 roughness: 0.2,
-                transparent: false, // Not transparent for better visibility
-                opacity: 1.0,
-                emissive: 0xffd166,
-                emissiveIntensity: 0.8
+                transparent: true,
+                opacity: 0.9,
+                emissive: 0x443311,
+                emissiveIntensity: 0.4
             });
             
             const sugar = new THREE.Mesh(sugarGeometry, sugarMaterial);
             sugar.position.set(x, y, z);
-            if (!isLowEndDevice) {
-                sugar.castShadow = true;
-            }
+            sugar.castShadow = true;
             sugar.userData = { type: 'sugar', position: i };
             dnaGroup.add(sugar);
             
-            // Phosphate group - increased size for visibility
+            // Phosphate group
             const phosphateAngle = angle + Math.PI / 8;
             const phosphateX = Math.cos(phosphateAngle) * (helixRadius + 0.3);
             const phosphateZ = Math.sin(phosphateAngle) * (helixRadius + 0.3);
             
-            const phosphateGeometry = new THREE.OctahedronGeometry(isLowEndDevice ? 0.2 : 0.25, 0);
+            const phosphateGeometry = new THREE.OctahedronGeometry(0.18, 0);
             const phosphateMaterial = new THREE.MeshPhysicalMaterial({
                 color: 0xef476f,
                 metalness: 0.3,
                 roughness: 0.2,
-                transparent: false, // Not transparent for better visibility
-                opacity: 1.0,
-                emissive: 0xef476f,
-                emissiveIntensity: 0.8
+                transparent: true,
+                opacity: 0.9,
+                emissive: 0x441122,
+                emissiveIntensity: 0.5
             });
             
             const phosphate = new THREE.Mesh(phosphateGeometry, phosphateMaterial);
             phosphate.position.set(phosphateX, y, phosphateZ);
-            if (!isLowEndDevice) {
-                phosphate.castShadow = true;
-            }
+            phosphate.castShadow = true;
             phosphate.userData = { type: 'phosphate', position: i };
             dnaGroup.add(phosphate);
             
@@ -6439,10 +5629,8 @@ function init3DSpeciesChart() {
                 color: 0xffffff,
                 metalness: 0.3,
                 roughness: 0.2,
-                transparent: false, // Not transparent for better visibility
-                opacity: 1.0,
-                emissive: 0xffffff,
-                emissiveIntensity: 0.8
+                transparent: true,
+                opacity: 0.8
             });
             const bond = new THREE.Mesh(bondGeometry, bondMaterial);
             bond.position.set((x + phosphateX) / 2, y, (z + phosphateZ) / 2);
@@ -6450,17 +5638,6 @@ function init3DSpeciesChart() {
             bond.rotateX(Math.PI / 2);
             dnaGroup.add(bond);
         }
-        
-        // Add a clean background for the DNA to make it stand out
-        const dnaBackgroundGeometry = new THREE.SphereGeometry(11, qualitySettings.organelleSegments, qualitySettings.organelleSegments);
-        const dnaBackgroundMaterial = new THREE.MeshBasicMaterial({
-            color: 0x000000,
-            transparent: true,
-            opacity: 0.3,
-            side: THREE.BackSide
-        });
-        const dnaBackground = new THREE.Mesh(dnaBackgroundGeometry, dnaBackgroundMaterial);
-        dnaGroup.add(dnaBackground);
         
         // Interactive features
         const raycaster = new THREE.Raycaster();
@@ -6470,7 +5647,7 @@ function init3DSpeciesChart() {
         let cameraAnimating = false;
         let cameraProgress = 0;
         
-        // Camera path for animation
+        // Camera path for animation - further out
         const cameraPath = new THREE.CatmullRomCurve3([
             new THREE.Vector3(0, 0, 60),
             new THREE.Vector3(40, 20, 40),
@@ -6539,76 +5716,6 @@ function init3DSpeciesChart() {
             controls.target.set(0, 0, 0);
             controls.update();
         });
-        
-        // Fullscreen functionality
-        fullscreenBtn.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                // Enter fullscreen
-                if (container.requestFullscreen) {
-                    container.requestFullscreen();
-                } else if (container.webkitRequestFullscreen) { /* Safari */
-                    container.webkitRequestFullscreen();
-                } else if (container.msRequestFullscreen) { /* IE11 */
-                    container.msRequestFullscreen();
-                }
-                
-                // Store original dimensions
-                container.dataset.originalWidth = container.clientWidth;
-                container.dataset.originalHeight = container.clientHeight;
-                
-                // Update button icon
-                fullscreenBtn.innerHTML = '⛶';
-            } else {
-                // Exit fullscreen
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) { /* Safari */
-                    document.webkitExitFullscreen();
-                } else if (document.msExitFullscreen) { /* IE11 */
-                    document.msExitFullscreen();
-                }
-                
-                // Update button icon
-                fullscreenBtn.innerHTML = '⛶';
-            }
-        });
-        
-        // Handle fullscreen change
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('msfullscreenchange', handleFullscreenChange);
-        
-        function handleFullscreenChange() {
-            if (document.fullscreenElement === container || 
-                document.webkitFullscreenElement === container || 
-                document.msFullscreenElement === container) {
-                // Adjust renderer size to fullscreen
-                const width = window.screen.width;
-                const height = window.screen.height;
-                
-                renderer.setSize(width, height);
-                camera.aspect = width / height;
-                camera.updateProjectionMatrix();
-                
-                // Hide other UI elements that might interfere
-                if (mobileControls) {
-                    mobileControls.style.display = 'flex';
-                }
-            } else {
-                // Restore original size
-                const originalWidth = parseInt(container.dataset.originalWidth) || container.clientWidth;
-                const originalHeight = parseInt(container.dataset.originalHeight) || container.clientHeight;
-                
-                renderer.setSize(originalWidth, originalHeight);
-                camera.aspect = originalWidth / originalHeight;
-                camera.updateProjectionMatrix();
-                
-                // Show UI elements again
-                if (mobileControls) {
-                    mobileControls.style.display = 'flex';
-                }
-            }
-        }
         
         // Touch controls for mobile
         let touchStartDistance = 0;
@@ -6689,34 +5796,6 @@ function init3DSpeciesChart() {
             }
             streamingParticles.geometry.attributes.position.needsUpdate = true;
             
-            // Animate cytosol particles
-            const cytosolPositions = cytosolParticles.geometry.attributes.position.array;
-            for (let i = 0; i < cytosolCount; i++) {
-                const idx = i * 3;
-                const dist = Math.sqrt(
-                    cytosolPositions[idx] * cytosolPositions[idx] + 
-                    cytosolPositions[idx + 1] * cytosolPositions[idx + 1] + 
-                    cytosolPositions[idx + 2] * cytosolPositions[idx + 2]
-                );
-                
-                // Slow movement for cytosol
-                cytosolPositions[idx] += (Math.random() - 0.5) * 0.01;
-                cytosolPositions[idx + 1] += (Math.random() - 0.5) * 0.01;
-                cytosolPositions[idx + 2] += (Math.random() - 0.5) * 0.01;
-                
-                // Keep within cell
-                if (dist > 37) {
-                    const scale = 37 / dist;
-                    cytosolPositions[idx] *= scale;
-                    cytosolPositions[idx + 1] *= scale;
-                    cytosolPositions[idx + 2] *= scale;
-                }
-            }
-            cytosolParticles.geometry.attributes.position.needsUpdate = true;
-            
-            // Animate phospholipids
-            phospholipidGroup.rotation.y = elapsedTime * 0.005;
-            
             // Camera animation
             if (cameraAnimating) {
                 cameraProgress += 0.02;
@@ -6775,14 +5854,9 @@ function init3DSpeciesChart() {
         
         // Handle resize
         const handleResize = debounce(() => {
-            // Don't resize if in fullscreen mode
-            if (!document.fullscreenElement && 
-                !document.webkitFullscreenElement && 
-                !document.msFullscreenElement) {
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
-            }
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
         }, 250);
         
         window.addEventListener('resize', handleResize);
@@ -6794,9 +5868,6 @@ function init3DSpeciesChart() {
                 window.removeEventListener('resize', handleResize);
                 renderer.domElement.removeEventListener('mousemove', onMouseMove);
                 renderer.domElement.removeEventListener('click', onMouseClick);
-                document.removeEventListener('fullscreenchange', handleFullscreenChange);
-                document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-                document.removeEventListener('msfullscreenchange', handleFullscreenChange);
                 container.removeChild(mobileControls);
                 renderer.dispose();
                 container.removeChild(renderer.domElement);
@@ -6809,6 +5880,10 @@ function init3DSpeciesChart() {
         document.getElementById('species3d-loading').innerHTML = '<div class="text-center p-4">Error loading 3D chart. Please refresh the page.</div>';
     }
 }
+
+
+
+
 // Simple debounce function
 function debounce(func, wait) {
     let timeout;
