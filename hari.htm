@@ -2114,6 +2114,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#predictions">Predictions</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#3d">3D Data</a>
+                    </li>
                     
                     <li class="nav-item">
                         <a class="nav-link" href="#contribute">Contribute</a>
@@ -2936,114 +2939,107 @@
                 </div>
             </div>
         </section>
-        <!-- AI Predictions Section -->
-        <section id="predictions" class="container my-5">
-            <div class="glass p-4" data-aos="fade-up" data-aos-duration="1000">
-                <h2 class="text-center mb-4">AI-Powered Predictions</h2>
-                <p class="text-center mb-4">Advanced machine learning predictions using Google Gemini API for future flowering patterns</p>
-                <!--
-                <ul class="nav nav-pills feature-tabs justify-content-center mb-4" id="predictionTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="short-term-tab" data-bs-toggle="pill" data-bs-target="#short-term" type="button" role="tab" aria-selected="true">7-Day Forecast</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="seasonal-tab" data-bs-toggle="pill" data-bs-target="#seasonal" type="button" role="tab" aria-selected="false">Seasonal</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="long-term-tab" data-bs-toggle="pill" data-bs-target="#long-term" type="button" role="tab" aria-selected="false">Long-term</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="prediction-map-tab" data-bs-toggle="pill" data-bs-target="#prediction-map" type="button" role="tab" aria-selected="false">Prediction Map</button>
-                    </li>
-                </ul>-->
-                
-                <div class="tab-content" id="predictionTabsContent">
-                    <div class="tab-pane fade show active" id="short-term" role="tabpanel" aria-labelledby="short-term-tab">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="prediction-card glass-hover">
-                                    <h4><i class="fas fa-chart-line me-2" aria-hidden="true"></i>Next 7 Days</h4>
-                                    <p>Based on current weather patterns and satellite data from MODIS and VIIRS, we predict increased flowering activity in temperate regions of North America and Europe. Early spring species are expected to reach peak flowering 3-5 days earlier than average.</p>
-                                    <div class="progress mt-3" role="progressbar" aria-valuenow="87" aria-valuemin="0" aria-valuemax="100">
-                                        <div class="progress-bar bg-success" style="width: 87%">87% Confidence</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="prediction-card glass-hover">
-                                    <h4><i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>Alerts</h4>
-                                    <p>Delayed flowering expected in Pacific Northwest due to unseasonably cool temperatures. Early flowering detected in Mediterranean regions with potential phenological mismatch risks for specialist pollinators.</p>
-                                    <button class="btn btn-primary btn-sm mt-2" aria-label="View alert details">View Details</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tab-pane fade show active" id="seasonal" role="tabpanel" aria-labelledby="seasonal-tab">
+
+
+        <!-- AI 3D section  -->
+<section id="3d" class="container my-5">
+    <div class="glass p-4" data-aos="fade-up" data-aos-duration="1000">
+        <h2 class="text-center mb-4">Cellular Extinction Risk Predictions</h2>
+        <p class="text-center mb-4">Theoretical model combining NASA satellite data with AI-powered genetic analysis to visualize extinction risks at the molecular level</p>
+        
+        <div class="tab-content" id="predictionTabsContent">
+            <div class="tab-pane fade show active" id="short-term" role="tabpanel" aria-labelledby="short-term-tab">
+                <div class="row">
+                    <div class="col-md-6">
                         <div class="prediction-card glass-hover">
-                            <h4><i class="fas fa-calendar-alt me-2" aria-hidden="true"></i>Seasonal Forecast</h4>
-                            <p>Our AI models predict an earlier than average spring flowering season in the Northern Hemisphere, with peak activity occurring 7-10 days ahead of historical averages. Southern Hemisphere shows more variable patterns with some regions experiencing delayed flowering due to La Niña effects.</p>
-                            <div class="chart-container mt-4">
-                                <canvas id="seasonalChart"></canvas>
+                            <h4><i class="fas fa-dna me-2" aria-hidden="true"></i>Genetic Analysis Framework</h4>
+                            <p>Our theoretical model utilizes Google Gemini API to analyze genetic sequences from endangered flowering species, identifying molecular markers associated with climate stress responses and extinction vulnerabilities.</p>
+                            <div class="progress mt-3" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar bg-info" style="width: 75%">Prototype Stage</div>
                             </div>
                         </div>
                     </div>
-                    <div class="tab-pane fade show active" id="long-term" role="tabpanel" aria-labelledby="long-term-tab">
+                    <div class="col-md-6">
                         <div class="prediction-card glass-hover">
-                            <h4><i class="fas fa-globe-americas me-2" aria-hidden="true"></i>Long-term Trends</h4>
-                            <p>Climate models indicate a continued shift in flowering patterns over the next decade, with significant changes in phenological timing for key species. High-altitude and Arctic regions show the most rapid changes, with some species advancing by up to 3 weeks.</p>
-                            <div class="timeline mt-4">
-                                <div class="timeline-item">
-                                    <h5>2025-2027</h5>
-                                    <p>Continued advancement of spring phenology in temperate regions (2-4 days earlier on average)</p>
-                                </div>
-                                <div class="timeline-item">
-                                    <h5>2028-2030</h5>
-                                    <p>Increased variability in flowering timing, potential for mismatches with pollinator activity (up to 30% of species affected)</p>
-                                </div>
-                                <div class="timeline-item">
-                                    <h5>2031-2035</h5>
-                                    <p>Significant range shifts for many flowering plant species, particularly in mountainous regions (upward elevation shifts of 200-500m)</p>
-                                </div>
+                            <h4><i class="fas fa-cube me-2" aria-hidden="true"></i>3D Molecular Visualization</h4>
+                            <p>The prototype demonstrates how genetic data could be rendered in three dimensions, with purple spheres representing cellular nuclei, yellow spheres indicating organelles, and molecular chains showing DNA/RNA structures under stress.</p>
+                            <button class="btn btn-primary btn-sm mt-2" aria-label="Explore visualization">Explore Model</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade show active" id="seasonal" role="tabpanel" aria-labelledby="seasonal-tab">
+                <div class="prediction-card glass-hover">
+                    <h4><i class="fas fa-satellite me-2" aria-hidden="true"></i>Multi-Scale Data Integration</h4>
+                    <p>Our theoretical framework bridges satellite observations from NASA's MODIS, VIIRS, and Landsat with genetic analysis, creating a comprehensive monitoring system that tracks climate impacts from planetary to molecular levels.</p>
+                    <div class="chart-container mt-4">
+                        <canvas id="integrationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade show active" id="long-term" role="tabpanel" aria-labelledby="long-term-tab">
+                <div class="prediction-card glass-hover">
+                    <h4><i class="fas fa-project-diagram me-2" aria-hidden="true"></i>Theoretical Implementation Roadmap</h4>
+                    <p>Our development plan progresses from the current 3D visualization prototype to a fully integrated system capable of real-time genetic analysis and extinction risk prediction.</p>
+                    <div class="timeline mt-4">
+                        <div class="timeline-item">
+                            <h5>Current Prototype</h5>
+                            <p>3D visualization interface demonstrating molecular structure representation with simulated data</p>
+                        </div>
+                        <div class="timeline-item">
+                            <h5>Phase 1: Data Integration</h5>
+                            <p>Connection to NASA Earth observation APIs and genetic databases (NCBI, GBIF)</p>
+                        </div>
+                        <div class="timeline-item">
+                            <h5>Phase 2: AI Analysis</h5>
+                            <p>Implementation of Gemini API for genetic pattern recognition and risk assessment</p>
+                        </div>
+                        <div class="timeline-item">
+                            <h5>Phase 3: Advanced Visualization</h5>
+                            <p>Real-time 3D rendering of actual genetic data with interactive exploration features</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade show active" id="prediction-map" role="tabpanel" aria-labelledby="prediction-map-tab">
+                <h3 class="text-center mb-4">Cellular Extinction Risk Predictions</h3>
+                    <div class="chart-3d-container" id="species3dChart" style="height: 700px !important;">
+                        <div class="loading-overlay" id="species3d-loading">
+                            <div class="loader" role="status" aria-label="Loading 3D chart">
+                                <span class="sr-only">Loading...</span>
                             </div>
                         </div>
                     </div>
-                    <div class="tab-pane fade show active" id="prediction-map" role="tabpanel" aria-labelledby="prediction-map-tab">
-                        <h3 class="text-center mb-4">Cellular Extinction Risk Predictions</h3>
-                            <div class="chart-3d-container" id="species3dChart" style="height: 700px !important;">
-                                <div class="loading-overlay" id="species3d-loading">
-                                    <div class="loader" role="status" aria-label="Loading 3D chart">
-                                        <span class="sr-only">Loading...</span>
-                                    </div>
-                                </div>
+                <div class="prediction-card mt-4">
+                    <h4>Interactive 3D Molecular Model</h4>
+                    <p>This prototype visualization demonstrates how genetic data from endangered flowering species could be represented in three dimensions, allowing researchers to explore cellular structures and identify stress markers.</p>
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <div style="width: 20px; height: 20px; background-color: #9c27b0; border-radius: 50%; margin-right: 10px;"></div>
+                                <span>Cellular Nuclei</span>
                             </div>
-                        <div class="prediction-card mt-4">
-                            <h4>Prediction Areas</h4>
-                            <p>This map shows predicted flowering patterns for the next 30 days based on current climate data and historical trends from USA-NPN and MODIS.</p>
-                            <div class="row mt-3">
-                                <div class="col-md-4">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div style="width: 20px; height: 20px; background-color: #ff5252; border-radius: 50%; margin-right: 10px;"></div>
-                                        <span>Early Flowering (7-14 days)</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div style="width: 20px; height: 20px; background-color: #ffffff; border-radius: 50%; margin-right: 10px;"></div>
-                                        <span>Normal Timing</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div style="width: 20px; height: 20px; background-color: #448aff; border-radius: 50%; margin-right: 10px;"></div>
-                                        <span>Late Flowering (7-14 days)</span>
-                                    </div>
-                                </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <div style="width: 20px; height: 20px; background-color: #ffeb3b; border-radius: 50%; margin-right: 10px;"></div>
+                                <span>Organelles</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <div style="width: 20px; height: 20px; background-color: #4caf50; border-radius: 50%; margin-right: 10px;"></div>
+                                <span>DNA/RNA Structures</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
+    </div>
+</section>
+
+
         <!-- Phenology Trends Chart -->
         <section class="container my-5">
             <div class="glass p-4" data-aos="fade-up" data-aos-duration="1000">
