@@ -4971,8 +4971,26 @@ function init3DSpeciesChart() {
             transition: all 0.3s ease;
         `;
         
+        // Fullscreen button
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'fullscreen-btn';
+        fullscreenBtn.innerHTML = '⛶';
+        fullscreenBtn.style.cssText = `
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(114, 137, 218, 0.8);
+            border: none;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        `;
+        
         // Add hover effects
-        [zoomInBtn, zoomOutBtn, resetBtn].forEach(btn => {
+        [zoomInBtn, zoomOutBtn, resetBtn, fullscreenBtn].forEach(btn => {
             btn.addEventListener('mouseenter', () => {
                 btn.style.transform = 'scale(1.1)';
                 btn.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.4)';
@@ -4986,6 +5004,7 @@ function init3DSpeciesChart() {
         mobileControls.appendChild(zoomInBtn);
         mobileControls.appendChild(zoomOutBtn);
         mobileControls.appendChild(resetBtn);
+        mobileControls.appendChild(fullscreenBtn);
         container.appendChild(mobileControls);
         
         // Microscope lighting setup
@@ -5717,6 +5736,76 @@ function init3DSpeciesChart() {
             controls.update();
         });
         
+        // Fullscreen functionality
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                // Enter fullscreen
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (container.webkitRequestFullscreen) { /* Safari */
+                    container.webkitRequestFullscreen();
+                } else if (container.msRequestFullscreen) { /* IE11 */
+                    container.msRequestFullscreen();
+                }
+                
+                // Store original dimensions
+                container.dataset.originalWidth = container.clientWidth;
+                container.dataset.originalHeight = container.clientHeight;
+                
+                // Update button icon
+                fullscreenBtn.innerHTML = '⛶';
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE11 */
+                    document.msExitFullscreen();
+                }
+                
+                // Update button icon
+                fullscreenBtn.innerHTML = '⛶';
+            }
+        });
+        
+        // Handle fullscreen change
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('msfullscreenchange', handleFullscreenChange);
+        
+        function handleFullscreenChange() {
+            if (document.fullscreenElement === container || 
+                document.webkitFullscreenElement === container || 
+                document.msFullscreenElement === container) {
+                // Adjust renderer size to fullscreen
+                const width = window.screen.width;
+                const height = window.screen.height;
+                
+                renderer.setSize(width, height);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                
+                // Hide other UI elements that might interfere
+                if (mobileControls) {
+                    mobileControls.style.display = 'flex';
+                }
+            } else {
+                // Restore original size
+                const originalWidth = parseInt(container.dataset.originalWidth) || container.clientWidth;
+                const originalHeight = parseInt(container.dataset.originalHeight) || container.clientHeight;
+                
+                renderer.setSize(originalWidth, originalHeight);
+                camera.aspect = originalWidth / originalHeight;
+                camera.updateProjectionMatrix();
+                
+                // Show UI elements again
+                if (mobileControls) {
+                    mobileControls.style.display = 'flex';
+                }
+            }
+        }
+        
         // Touch controls for mobile
         let touchStartDistance = 0;
         
@@ -5854,9 +5943,14 @@ function init3DSpeciesChart() {
         
         // Handle resize
         const handleResize = debounce(() => {
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            // Don't resize if in fullscreen mode
+            if (!document.fullscreenElement && 
+                !document.webkitFullscreenElement && 
+                !document.msFullscreenElement) {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
         }, 250);
         
         window.addEventListener('resize', handleResize);
@@ -5868,6 +5962,9 @@ function init3DSpeciesChart() {
                 window.removeEventListener('resize', handleResize);
                 renderer.domElement.removeEventListener('mousemove', onMouseMove);
                 renderer.domElement.removeEventListener('click', onMouseClick);
+                document.removeEventListener('fullscreenchange', handleFullscreenChange);
+                document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+                document.removeEventListener('msfullscreenchange', handleFullscreenChange);
                 container.removeChild(mobileControls);
                 renderer.dispose();
                 container.removeChild(renderer.domElement);
@@ -5880,8 +5977,6 @@ function init3DSpeciesChart() {
         document.getElementById('species3d-loading').innerHTML = '<div class="text-center p-4">Error loading 3D chart. Please refresh the page.</div>';
     }
 }
-
-
 
 
 // Simple debounce function
